@@ -1,0 +1,23 @@
+<!-- templates/login.html -->
+{% extends "base.html" %}
+{% block title %}Вход{% endblock %}
+{% block content %}
+<h2>Вход в тренировочный журнал</h2>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
+<form method="post">
+    <label for="username">Имя пользователя:</label>
+    <input type="text" id="username" name="username" required>
+    <button type="submit" class="btn">Войти</button>
+</form>
+<p>Нет аккаунта? Обратитесь к администратору.</p>
+{% endblock %}

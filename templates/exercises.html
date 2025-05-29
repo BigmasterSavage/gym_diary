@@ -1,0 +1,42 @@
+<!-- templates/exercises.html -->
+{% extends "base.html" %}
+{% block title %}Упражнения{% endblock %}
+{% block content %}
+<h2>Упражнения</h2>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
+<h3>Добавить упражнение</h3>
+<form method="post">
+    <input type="hidden" name="action" value="add">
+    <label>Название:</label>
+    <input type="text" name="name" required>
+    <label>Описание:</label>
+    <textarea name="description"></textarea>
+    <button type="submit" class="btn">Добавить</button>
+</form>
+
+<hr>
+
+<h3>Список упражнений</h3>
+<ul>
+    {% for ex in exercises %}
+        <li>
+            <strong>{{ ex.name }}</strong> — {{ ex.description or '' }}
+            <form method="post" style="display:inline;">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="exercise_id" value="{{ ex.id }}">
+                <button type="submit" class="btn" onclick="return confirm('Вы уверены?')">Удалить</button>
+            </form>
+        </li>
+    {% endfor %}
+</ul>
+{% endblock %}

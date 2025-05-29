@@ -1,0 +1,66 @@
+<!-- templates/menu.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Главное меню</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding-top: 50px;
+        }
+
+        h2 {
+            margin-bottom: 30px;
+        }
+
+        .menu-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .menu-button {
+            text-decoration: none;
+            background-color: #007BFF;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 5px;
+            font-size: 18px;
+            transition: background-color 0.3s ease;
+        }
+
+        .menu-button:hover {
+            background-color: #0056b3;
+        }
+
+        .logout-link {
+            display: block;
+            margin-top: 30px;
+            color: #007BFF;
+            text-decoration: underline;
+        }
+
+        .logout-link:hover {
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Привет, {{ session.username }}!</h2>
+
+    <div class="menu-buttons">
+        <a href="/createtraining" class="menu-button">Создать тренировку</a>
+        <a href="/changetraining" class="menu-button">Редактировать тренировку</a>
+        <a href="/exercises" class="menu-button">Упражнения</a>
+        <a href="/stats" class="menu-button">Статистика</a>
+    </div>
+
+    <a href="/logout" class="logout-link">Выйти</a>
+
+</body>
+</html>
