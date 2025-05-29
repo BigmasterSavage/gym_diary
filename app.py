@@ -5,10 +5,10 @@ from psycopg2.extras import DictCursor
 
 # Конфиг базы данных
 DB_CONFIG = {
-    'dbname': 'gym',
-    'user': 'master',
-    'password': 'LKbyRLKbyR',
-    'host': '109.234.39.124',
+    'dbname': '',
+    'user': '',
+    'password': '',
+    'host': '',
     'port': 5433
 }
 
