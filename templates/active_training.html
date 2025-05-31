@@ -7,6 +7,7 @@
         body { font-family: sans-serif; }
         .exercise-block { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
         .hidden { display: none; }
+        .toggle-btn { cursor: pointer; color: blue; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -57,6 +58,10 @@
             const weight = block.querySelector(".weight").value;
             const reps = block.querySelector(".reps").value;
             const note = block.querySelector(".note").value;
+            const cache = JSON.parse(localStorage.getItem("training_cache") || '{}');
+            cache[setId] = { weight, reps, note };
+            localStorage.setItem("training_cache", JSON.stringify(cache));
+
             fetch(`update_set`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -69,34 +74,55 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ set_id: setId })
-            }).then(() => location.reload());
+            }).then(() => {
+                const cache = JSON.parse(localStorage.getItem("training_cache") || '{}');
+                delete cache[setId];
+                localStorage.setItem("training_cache", JSON.stringify(cache));
+                location.reload();
+            });
         }
 
         function finishTraining() {
+            localStorage.removeItem("training_cache");
             fetch(`finish`, {
                 method: 'POST'
             }).then(() => window.location.href = '/menu');
         }
-    </script>
 
-    <script>
+        // Рендер подходов с разворачиванием и localStorage
         const sets = {{ sets | tojson }};
+        const cache = JSON.parse(localStorage.getItem("training_cache") || '{}');
         const container = document.getElementById("exercise-list");
         sets.forEach(s => {
             const div = document.createElement("div");
             div.className = "exercise-block";
             div.id = `set-${s.id}`;
+            const isCollapsed = localStorage.getItem(`collapsed_${s.id}`) === 'true';
+
+            let noteVal = cache[s.id]?.note || s.note || '';
+            let weightVal = cache[s.id]?.weight || s.weight_kg || '';
+            let repsVal = cache[s.id]?.reps || s.reps || '';
+
             div.innerHTML = `
-                <b>${s.exercise_name}</b><br>
-                Подход ID: ${s.id}<br>
-                Вес: <input type="number" class="weight" value="${s.weight_kg || ''}"> кг<br>
-                Повторы: <input type="number" class="reps" value="${s.reps || ''}"><br>
-                Заметка: <input type="text" class="note" value="${s.note || ''}"><br>
-                <button onclick="updateSet(${s.id})">Сохранить</button>
-                <button onclick="deleteSet(${s.id})" style="color:red">Удалить</button>
+                <div class="toggle-btn" onclick="toggleBlock(${s.id})">▼ ${s.exercise_name}</div>
+                <div class="details" id="details-${s.id}" style="display: ${isCollapsed ? 'none' : 'block'}">
+                    Подход ID: ${s.id}<br>
+                    Вес: <input type="number" class="weight" value="${weightVal}"> кг<br>
+                    Повторы: <input type="number" class="reps" value="${repsVal}"><br>
+                    Заметка: <input type="text" class="note" value="${noteVal}"><br>
+                    <button onclick="updateSet(${s.id})">Сохранить</button>
+                    <button onclick="deleteSet(${s.id})" style="color:red">Удалить</button>
+                </div>
             `;
             container.appendChild(div);
         });
+
+        function toggleBlock(id) {
+            const el = document.getElementById(`details-${id}`);
+            const isVisible = el.style.display !== 'none';
+            el.style.display = isVisible ? 'none' : 'block';
+            localStorage.setItem(`collapsed_${id}`, (!isVisible).toString());
+        }
     </script>
 </body>
 </html>
