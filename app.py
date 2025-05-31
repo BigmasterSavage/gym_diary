@@ -1,7 +1,9 @@
 # app.py
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from datetime import datetime
 import psycopg2
 from psycopg2.extras import DictCursor
+
 
 # Конфиг базы данных
 DB_CONFIG = {
@@ -153,128 +155,51 @@ def createtraining():
     return render_template('createtraining.html', exercises=exercises_list)
 
 
-@app.route('/changetraining', methods=['GET', 'POST'])
-def changetraining():
+@app.route('/active_training/<int:workout_id>', methods=['GET'])
+def active_training(workout_id):
     if 'username' not in session:
         return redirect(url_for('login'))
 
     user_id = session['user_id']
 
-    if request.method == 'POST':
-        action = request.form.get('action')
-
-        if action == 'delete_workout':
-            workout_id = request.form.get('workout_id')
-            if workout_id:
-                with get_db_connection() as conn:
-                    with conn.cursor() as cur:
-                        cur.execute("DELETE FROM sets WHERE workout_id = %s", (workout_id,))
-                        cur.execute("DELETE FROM workouts WHERE id = %s AND user_id = %s", (workout_id, user_id))
-                        conn.commit()
-                flash("Тренировка удалена")
-            return redirect(url_for('changetraining'))
-
-        elif action == 'delete_set':
-            set_id = request.form.get('set_id')
-            workout_id = request.form.get('workout_id')
-            if set_id and workout_id:
-                with get_db_connection() as conn:
-                    with conn.cursor() as cur:
-                        cur.execute("""
-                            DELETE FROM sets 
-                            WHERE id = %s AND workout_id = %s AND workout_id IN (
-                                SELECT id FROM workouts WHERE user_id = %s
-                            )
-                        """, (set_id, workout_id, user_id))
-                        conn.commit()
-                return redirect(url_for('changetraining', workout_id=workout_id))
-
-        elif action == 'add_set':
-            workout_id = request.form.get('workout_id')
-            if workout_id:
-                with get_db_connection() as conn:
-                    with conn.cursor() as cur:
-                        cur.execute("""
-                            INSERT INTO sets (workout_id, exercise_id, weight_kg, reps, note)
-                            VALUES (%s, NULL, NULL, NULL, '')
-                        """, (workout_id,))
-                        conn.commit()
-                return redirect(url_for('changetraining', workout_id=workout_id))
-
-        else:
-            workout_id = request.form.get('workout_id')
-            if not workout_id:
-                flash("Выберите тренировку для редактирования")
-                return redirect(url_for('changetraining'))
-
-            set_ids = request.form.getlist('set_id')
-            exercise_ids = request.form.getlist('exercise_id')
-            weights = request.form.getlist('weight_kg')
-            reps = request.form.getlist('reps')
-            notes = request.form.getlist('set_note')
-
-            with get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    for i in range(len(set_ids)):
-                        set_id = set_ids[i]
-                        eid = exercise_ids[i] or None
-                        weight = weights[i] or None
-                        rep = reps[i]
-                        note = notes[i]
-
-                        if rep is None or rep == '':
-                            continue
-
-                        # Проверяем принадлежность сета пользователю
-                        cur.execute("""
-                            UPDATE sets
-                            SET exercise_id = %s, weight_kg = %s, reps = %s, note = %s
-                            WHERE id = %s AND workout_id = %s AND workout_id IN (
-                                SELECT id FROM workouts WHERE user_id = %s
-                            )
-                        """, (eid, weight, rep, note, set_id, workout_id, user_id))
-
-                    conn.commit()
-
-            flash("Тренировка успешно обновлена!")
-            return redirect(url_for('menu'))
-
-    workout_id = request.args.get('workout_id')
-
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=DictCursor) as cur:
-            # Только свои тренировки
-            cur.execute("SELECT id, date, note FROM workouts WHERE user_id = %s ORDER BY date DESC", (user_id,))
-            workouts_list = cur.fetchall()
+            # Получение тренировки
+            cur.execute("SELECT * FROM workouts WHERE id = %s AND user_id = %s", (workout_id, user_id))
+            workout = cur.fetchone()
 
-            selected_workout = None
-            sets_data = []
-            exercises_list = []
+            if not workout:
+                flash("Тренировка не найдена.")
+                return redirect(url_for('menu'))
 
-            if workout_id:
-                # Проверяем, принадлежит ли эта тренировка пользователю
-                cur.execute("SELECT * FROM workouts WHERE id = %s AND user_id = %s", (workout_id, user_id))
-                selected_workout = cur.fetchone()
+            # Установка времени начала при первом входе
+            if not workout['start_time']:
+                now = datetime.now()
+                cur.execute("UPDATE workouts SET start_time = %s WHERE id = %s", (now, workout_id))
+                conn.commit()
+                workout['start_time'] = now
 
-                if selected_workout:
-                    cur.execute("""
-                        SELECT s.id AS set_id, s.exercise_id, e.name AS exercise_name, s.weight_kg, s.reps, s.note
-                        FROM sets s
-                        LEFT JOIN exercises e ON s.exercise_id = e.id
-                        WHERE s.workout_id = %s
-                    """, (workout_id,))
-                    sets_data = cur.fetchall()
+            # Получение всех подходов
+            cur.execute("""
+                SELECT s.id, s.exercise_id, e.name AS exercise_name, s.weight_kg, s.reps, s.note
+                FROM sets s
+                LEFT JOIN exercises e ON s.exercise_id = e.id
+                WHERE s.workout_id = %s
+                ORDER BY s.id
+            """, (workout_id,))
+            sets = cur.fetchall()
 
+            # Получение всех упражнений
             cur.execute("SELECT id, name FROM exercises ORDER BY name")
-            exercises_list = cur.fetchall()
+            exercises = cur.fetchall()
 
     return render_template(
-        'changetraining.html',
-        workouts=workouts_list,
-        selected_workout=selected_workout,
-        sets=sets_data,
-        exercises=exercises_list
+        'active_training.html',
+        workout=workout,
+        sets=sets,
+        exercises=exercises
     )
+
 
 @app.route('/stats', methods=['GET', 'POST'])
 def stats():
