@@ -7,11 +7,11 @@ from psycopg2.extras import DictCursor
 
 # Конфиг базы данных
 DB_CONFIG = {
-    'dbname': '',
-    'user': '',
-    'password': '',
-    'host': '',
-    'port': 5433
+    'dbname': os.getenv('DB_NAME'),
+    'user': os.getenv('DB_USER'),
+    'password': os.getenv('DB_PASSWORD'),
+    'host': os.getenv('DB_HOST'),
+    'port': int(os.getenv('DB_PORT', 5433))  # по умолчанию 5432
 }
 
 app = Flask(__name__)
