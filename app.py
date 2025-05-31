@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 from psycopg2.extras import DictCursor
 
+load_dotenv()
 
 # Конфиг базы данных
 DB_CONFIG = {
