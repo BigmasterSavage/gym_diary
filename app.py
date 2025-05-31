@@ -2,6 +2,8 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from datetime import datetime
 import psycopg2
+import os
+from dotenv import load_dotenv
 from psycopg2.extras import DictCursor
 
 
