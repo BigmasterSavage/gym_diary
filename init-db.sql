@@ -1,24 +1,27 @@
--- init-db.sql
-CREATE TABLE users (
+-- Создание таблицы пользователей
+CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE workouts (
+-- Создание таблицы тренировок
+CREATE TABLE IF NOT EXISTS workouts (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
     date DATE NOT NULL DEFAULT CURRENT_DATE,
     note TEXT
 );
 
-CREATE TABLE exercises (
+-- Создание таблицы упражнений
+CREATE TABLE IF NOT EXISTS exercises (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT
 );
 
-CREATE TABLE sets (
+-- Создание таблицы подходов
+CREATE TABLE IF NOT EXISTS sets (
     id SERIAL PRIMARY KEY,
     workout_id INTEGER REFERENCES workouts(id),
     exercise_id INTEGER REFERENCES exercises(id),
@@ -27,5 +30,7 @@ CREATE TABLE sets (
     note TEXT
 );
 
--- ���������� ������������ 'admin' ��� ������������� ��
-INSERT INTO users (username) VALUES ('admin');
+-- Добавление пользователя 'admin', если такого еще нет
+INSERT INTO users (username)
+VALUES ('admin')
+ON CONFLICT (username) DO NOTHING;
