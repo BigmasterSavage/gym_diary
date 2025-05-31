@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Активная тренировка</title>
+    <style>
+        body { font-family: sans-serif; }
+        .exercise-block { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <h2>Тренировка: {{ workout.date }} — {{ workout.note }}</h2>
+    <p>Продолжительность: <span id="timer">0 мин</span></p>
+
+    <hr>
+
+    <label>Добавить упражнение:</label><br>
+    <input type="text" id="search" placeholder="Начните вводить...">
+    <select id="exercise-select">
+        <option value="">Выберите упражнение</option>
+        {% for ex in exercises %}
+        <option value="{{ ex.id }}">{{ ex.name }}</option>
+        {% endfor %}
+    </select>
+    <input type="number" id="sets-count" value="1" min="1" max="20">
+    <button onclick="addExercise()">Добавить</button>
+
+    <div id="exercise-list"></div>
+
+    <button onclick="finishTraining()" style="margin-top: 20px">Завершить тренировку</button>
+
+    <script>
+        const workoutStart = new Date("{{ workout.start_time.isoformat() }}");
+
+        function updateTimer() {
+            const now = new Date();
+            const minutes = Math.floor((now - workoutStart) / 60000);
+            document.getElementById("timer").textContent = `${minutes} мин`;
+        }
+        setInterval(updateTimer, 60000);
+        updateTimer();
+
+        function addExercise() {
+            const exId = document.getElementById("exercise-select").value;
+            const sets = document.getElementById("sets-count").value;
+            if (!exId) return alert("Выберите упражнение");
+            fetch(`add_ex`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ exercise_id: exId, num_sets: parseInt(sets) })
+            }).then(() => location.reload());
+        }
+
+        function updateSet(setId) {
+            const block = document.getElementById(`set-${setId}`);
+            const weight = block.querySelector(".weight").value;
+            const reps = block.querySelector(".reps").value;
+            const note = block.querySelector(".note").value;
+            fetch(`update_set`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ set_id: setId, weight_kg: weight, reps: reps, note: note })
+            });
+        }
+
+        function deleteSet(setId) {
+            fetch(`delete_set`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ set_id: setId })
+            }).then(() => location.reload());
+        }
+
+        function finishTraining() {
+            fetch(`finish`, {
+                method: 'POST'
+            }).then(() => window.location.href = '/menu');
+        }
+    </script>
+
+    <script>
+        const sets = {{ sets | tojson }};
+        const container = document.getElementById("exercise-list");
+        sets.forEach(s => {
+            const div = document.createElement("div");
+            div.className = "exercise-block";
+            div.id = `set-${s.id}`;
+            div.innerHTML = `
+                <b>${s.exercise_name}</b><br>
+                Подход ID: ${s.id}<br>
+                Вес: <input type="number" class="weight" value="${s.weight_kg || ''}"> кг<br>
+                Повторы: <input type="number" class="reps" value="${s.reps || ''}"><br>
+                Заметка: <input type="text" class="note" value="${s.note || ''}"><br>
+                <button onclick="updateSet(${s.id})">Сохранить</button>
+                <button onclick="deleteSet(${s.id})" style="color:red">Удалить</button>
+            `;
+            container.appendChild(div);
+        });
+    </script>
+</body>
+</html>
