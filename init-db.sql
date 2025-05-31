@@ -1,26 +1,31 @@
--- Создание таблицы пользователей
+-- Таблица пользователей
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Создание таблицы тренировок
+-- Таблица тренировок с классификацией по интенсивности
 CREATE TABLE IF NOT EXISTS workouts (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
     date DATE NOT NULL DEFAULT CURRENT_DATE,
-    note TEXT
+    note TEXT,
+    intensity VARCHAR(20)
+        CHECK (
+            intensity IN ('легкая', 'средняя', 'тяжелая', 'разгрузочная', 'растяжка') OR intensity IS NULL
+        )
 );
 
--- Создание таблицы упражнений
+-- Таблица упражнений с признаком "базовое"
 CREATE TABLE IF NOT EXISTS exercises (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    description TEXT
+    description TEXT,
+    is_basic BOOLEAN DEFAULT FALSE
 );
 
--- Создание таблицы подходов
+-- Таблица подходов
 CREATE TABLE IF NOT EXISTS sets (
     id SERIAL PRIMARY KEY,
     workout_id INTEGER REFERENCES workouts(id),
@@ -30,7 +35,7 @@ CREATE TABLE IF NOT EXISTS sets (
     note TEXT
 );
 
--- Добавление пользователя 'admin', если такого еще нет
+-- Добавление пользователя 'admin', если он не существует
 INSERT INTO users (username)
 VALUES ('admin')
 ON CONFLICT (username) DO NOTHING;
