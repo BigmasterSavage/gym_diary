@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Таблица тренировок с классификацией по интенсивности
+-- Таблица тренировок
 CREATE TABLE IF NOT EXISTS workouts (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
@@ -14,10 +14,12 @@ CREATE TABLE IF NOT EXISTS workouts (
     intensity VARCHAR(20)
         CHECK (
             intensity IN ('легкая', 'средняя', 'тяжелая', 'разгрузочная', 'растяжка') OR intensity IS NULL
-        )
+        ),
+    start_time TIMESTAMP,
+    duration_minutes INTEGER
 );
 
--- Таблица упражнений с признаком "базовое"
+-- Таблица упражнений
 CREATE TABLE IF NOT EXISTS exercises (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -35,7 +37,7 @@ CREATE TABLE IF NOT EXISTS sets (
     note TEXT
 );
 
--- Добавление пользователя 'admin', если он не существует
+-- Добавление пользователя 'admin' при инициализации
 INSERT INTO users (username)
 VALUES ('admin')
 ON CONFLICT (username) DO NOTHING;
