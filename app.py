@@ -138,89 +138,82 @@ def createtraining():
     return render_template('createtraining.html')
 
 
-@app.route('/active/<int:workout_id>', methods=['GET', 'POST'])
+@app.route('/training/<int:workout_id>', methods=['GET', 'POST'])
 def active_training(workout_id):
     if 'username' not in session:
         return redirect(url_for('login'))
 
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=DictCursor) as cur:
-            # Получить тренировку
+            # Получение тренировки
             cur.execute("SELECT * FROM workouts WHERE id = %s", (workout_id,))
             workout = cur.fetchone()
             if not workout:
                 flash("Тренировка не найдена")
                 return redirect(url_for('menu'))
 
-            # Установить время начала, если ещё не задано
-            if not workout['start_time']:
-                cur.execute("UPDATE workouts SET start_time = NOW() WHERE id = %s", (workout_id,))
-                conn.commit()
-                workout['start_time'] = datetime.now()
-
-            # Обработка POST-действий
-            if request.method == 'POST':
-                action = request.form.get('action')
-
-                if action == 'add_exercise':
-                    exercise_id = request.form.get('exercise_id')
-                    if exercise_id:
-                        cur.execute("""
-                            INSERT INTO sets (workout_id, exercise_id, reps)
-                            VALUES (%s, %s, NULL)
-                        """, (workout_id, exercise_id))
-                        conn.commit()
-
-                elif action == 'add_set':
-                    exercise_id = request.form.get('exercise_id')
-                    if exercise_id:
-                        cur.execute("""
-                            INSERT INTO sets (workout_id, exercise_id, reps)
-                            VALUES (%s, %s, NULL)
-                        """, (workout_id, exercise_id))
-                        conn.commit()
-
-                elif action == 'remove_exercise':
-                    exercise_id = request.form.get('exercise_id')
-                    cur.execute("""
-                        DELETE FROM sets WHERE workout_id = %s AND exercise_id = %s
-                    """, (workout_id, exercise_id))
-                    conn.commit()
-
-                elif action == 'finish':
-                    cur.execute("""
-                        UPDATE workouts SET duration_minutes = EXTRACT(MINUTE FROM NOW() - start_time)
-                        WHERE id = %s
-                    """, (workout_id,))
-                    conn.commit()
-                    return redirect(url_for('menu'))
-
-            # Получить список всех упражнений
+            # Получение упражнений
             cur.execute("SELECT id, name FROM exercises ORDER BY name")
-            all_exercises = cur.fetchall()
+            exercises = cur.fetchall()
 
-            # Получить группы подходов
+            # Получение всех подходов по тренировке
             cur.execute("""
-                SELECT e.id as exercise_id, e.name, s.id as set_id, s.weight_kg, s.reps
+                SELECT s.id, s.exercise_id, s.weight_kg, s.reps, e.name
                 FROM sets s
                 JOIN exercises e ON s.exercise_id = e.id
                 WHERE s.workout_id = %s
-                ORDER BY e.name, s.id
+                ORDER BY s.exercise_id, s.id
             """, (workout_id,))
-            raw_sets = cur.fetchall()
+            sets = cur.fetchall()
 
-            # Сгруппировать по упражнениям
-            from collections import defaultdict
-            grouped = defaultdict(list)
-            for row in raw_sets:
-                grouped[row['exercise_id']].append(row)
+            # Группировка по exercise_id
+            grouped_sets = {}
+            for s in sets:
+                grouped_sets.setdefault(s['exercise_id'], []).append(s)
 
-    return render_template("active_training.html",
-                           workout=workout,
-                           exercises=all_exercises,
-                           grouped_sets=grouped)
+            if request.method == 'POST':
+                action = request.form.get('action')
 
-    
+                # Сохранение значений подходов
+                if action in ('save', 'finish'):
+                    for s in sets:
+                        new_weight = request.form.get(f"weights_{s['id']}") or None
+                        new_reps = request.form.get(f"reps_{s['id']}") or None
+                        cur.execute("""
+                            UPDATE sets
+                            SET weight_kg = %s, reps = %s
+                            WHERE id = %s
+                        """, (new_weight, new_reps, s['id']))
+                    conn.commit()
+                    flash("Изменения сохранены")
+
+                    if action == 'finish':
+                        cur.execute("""
+                            UPDATE workouts
+                            SET duration_minutes = EXTRACT(MINUTE FROM (CURRENT_TIMESTAMP - start_time))
+                            WHERE id = %s
+                        """, (workout_id,))
+                        conn.commit()
+                        return redirect(url_for('menu'))
+
+                elif action == 'add':
+                    ex_id = request.form.get('exercise_id')
+                    sets_count = int(request.form.get('sets_count', 1))
+                    for _ in range(sets_count):
+                        cur.execute("""
+                            INSERT INTO sets (workout_id, exercise_id, weight_kg, reps)
+                            VALUES (%s, %s, NULL, NULL)
+                        """, (workout_id, ex_id))
+                    conn.commit()
+                    return redirect(url_for('active_training', workout_id=workout_id))
+
+            return render_template(
+                'active_training.html',
+                workout=workout,
+                exercises=exercises,
+                grouped_sets=grouped_sets
+            )
+
 
 @app.route('/stats', methods=['GET', 'POST'])
 def stats():
