@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS sets (
     id SERIAL PRIMARY KEY,
     workout_id INTEGER REFERENCES workouts(id),
     exercise_id INTEGER REFERENCES exercises(id),
+    order_num INTEGER,
     weight_kg NUMERIC(5,2),
     reps INTEGER,
     note TEXT
