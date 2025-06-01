@@ -168,8 +168,8 @@ def active_training(workout_id):
                         max_order = cur.fetchone()[0]
                         for _ in range(sets_count):
                             cur.execute("""
-                                INSERT INTO sets (workout_id, exercise_id)
-                                VALUES (%s, %s)
+                                INSERT INTO sets (workout_id, exercise_id, order_num)
+                                VALUES (%s, %s, %s)
                             """, (workout_id, ex_id, max_order + 1))
                         conn.commit()
 
