@@ -184,6 +184,29 @@ def active_training(workout_id):
     )
 
 
+@app.route('/finish/<int:workout_id>', methods=['POST'])
+def finish_training(workout_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.get_json()
+    duration = data.get('duration')
+
+    if duration is None or not isinstance(duration, int):
+        return jsonify({'error': 'Invalid duration'}), 400
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE workouts
+                SET duration_minutes = %s
+                WHERE id = %s AND user_id = %s
+            """, (duration, workout_id, session['user_id']))
+            conn.commit()
+
+    return jsonify({'status': 'ok'})
+    
+
 @app.route('/stats', methods=['GET', 'POST'])
 def stats():
     if 'username' not in session:
