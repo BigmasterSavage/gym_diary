@@ -58,14 +58,14 @@
         <button name="action" value="add_exercise" type="submit">Добавить</button>
 
         <div id="exercise-names">
-            {% for ex_id, sets in grouped_sets.items() %}
+            {% for ex_id, sets in grouped_sets.items()|reverse %}
                 <div>{{ sets[0].name }} — {{ sets|length }} подход(ов)</div>
             {% endfor %}
         </div>
     </div>
 
     <div class="right-column">
-        {% for ex_id, sets in grouped_sets.items()|reverse %}
+        {% for ex_id, sets in grouped_sets.items() %}
             <div class="exercise-set">
                 <strong>{{ sets[0].name }}</strong>
                 {% for set in sets %}
