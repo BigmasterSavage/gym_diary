@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS workouts (
         CHECK (
             intensity IN ('легкая', 'средняя', 'тяжелая', 'разгрузочная', 'растяжка') OR intensity IS NULL
         ),
-    start_time TIMESTAMP,
+    start_time TIMESTAMP DEFAULT NOW(),
     duration_minutes INTEGER
 );
 
