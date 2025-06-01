@@ -149,7 +149,7 @@ def createtraining():
 
         # 👇 Исправленный переход
         session['workout_id'] = workout_id
-        return redirect(url_for('active_training'))
+        return redirect(url_for('active_training', workout_id=workout_id))
 
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=DictCursor) as cur:
