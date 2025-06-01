@@ -138,73 +138,88 @@ def createtraining():
     return render_template('createtraining.html')
 
 
-@app.route('/active_training/<int:workout_id>', methods=['GET'])
+@app.route('/active/<int:workout_id>', methods=['GET', 'POST'])
 def active_training(workout_id):
     if 'username' not in session:
         return redirect(url_for('login'))
 
-    user_id = session['user_id']
-
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=DictCursor) as cur:
-            # Получение тренировки
-            cur.execute("SELECT * FROM workouts WHERE id = %s AND user_id = %s", (workout_id, user_id))
+            # Получить тренировку
+            cur.execute("SELECT * FROM workouts WHERE id = %s", (workout_id,))
             workout = cur.fetchone()
-
             if not workout:
-                flash("Тренировка не найдена.")
+                flash("Тренировка не найдена")
                 return redirect(url_for('menu'))
 
-            # Установка времени начала при первом входе
+            # Установить время начала, если ещё не задано
             if not workout['start_time']:
-                now = datetime.now()
-                cur.execute("UPDATE workouts SET start_time = %s WHERE id = %s", (now, workout_id))
+                cur.execute("UPDATE workouts SET start_time = NOW() WHERE id = %s", (workout_id,))
                 conn.commit()
-                workout['start_time'] = now
+                workout['start_time'] = datetime.now()
 
-            # Получение всех подходов
-            cur.execute("""
-                SELECT s.id, s.exercise_id, e.name AS exercise_name, s.weight_kg, s.reps, s.note
-                FROM sets s
-                LEFT JOIN exercises e ON s.exercise_id = e.id
-                WHERE s.workout_id = %s
-                ORDER BY s.id
-            """, (workout_id,))
-            sets = cur.fetchall()
+            # Обработка POST-действий
+            if request.method == 'POST':
+                action = request.form.get('action')
 
-            # Получение всех упражнений
+                if action == 'add_exercise':
+                    exercise_id = request.form.get('exercise_id')
+                    if exercise_id:
+                        cur.execute("""
+                            INSERT INTO sets (workout_id, exercise_id, reps)
+                            VALUES (%s, %s, NULL)
+                        """, (workout_id, exercise_id))
+                        conn.commit()
+
+                elif action == 'add_set':
+                    exercise_id = request.form.get('exercise_id')
+                    if exercise_id:
+                        cur.execute("""
+                            INSERT INTO sets (workout_id, exercise_id, reps)
+                            VALUES (%s, %s, NULL)
+                        """, (workout_id, exercise_id))
+                        conn.commit()
+
+                elif action == 'remove_exercise':
+                    exercise_id = request.form.get('exercise_id')
+                    cur.execute("""
+                        DELETE FROM sets WHERE workout_id = %s AND exercise_id = %s
+                    """, (workout_id, exercise_id))
+                    conn.commit()
+
+                elif action == 'finish':
+                    cur.execute("""
+                        UPDATE workouts SET duration_minutes = EXTRACT(MINUTE FROM NOW() - start_time)
+                        WHERE id = %s
+                    """, (workout_id,))
+                    conn.commit()
+                    return redirect(url_for('menu'))
+
+            # Получить список всех упражнений
             cur.execute("SELECT id, name FROM exercises ORDER BY name")
-            exercises = cur.fetchall()
+            all_exercises = cur.fetchall()
 
-    return render_template(
-        'active_training.html',
-        workout=workout,
-        sets=sets,
-        exercises=exercises
-    )
-
-
-@app.route('/finish/<int:workout_id>', methods=['POST'])
-def finish_training(workout_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 403
-
-    data = request.get_json()
-    duration = data.get('duration')
-
-    if duration is None or not isinstance(duration, int):
-        return jsonify({'error': 'Invalid duration'}), 400
-
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
+            # Получить группы подходов
             cur.execute("""
-                UPDATE workouts
-                SET duration_minutes = %s
-                WHERE id = %s AND user_id = %s
-            """, (duration, workout_id, session['user_id']))
-            conn.commit()
+                SELECT e.id as exercise_id, e.name, s.id as set_id, s.weight_kg, s.reps
+                FROM sets s
+                JOIN exercises e ON s.exercise_id = e.id
+                WHERE s.workout_id = %s
+                ORDER BY e.name, s.id
+            """, (workout_id,))
+            raw_sets = cur.fetchall()
 
-    return jsonify({'status': 'ok'})
+            # Сгруппировать по упражнениям
+            from collections import defaultdict
+            grouped = defaultdict(list)
+            for row in raw_sets:
+                grouped[row['exercise_id']].append(row)
+
+    return render_template("active_training.html",
+                           workout=workout,
+                           exercises=all_exercises,
+                           grouped_sets=grouped)
+
     
 
 @app.route('/stats', methods=['GET', 'POST'])
