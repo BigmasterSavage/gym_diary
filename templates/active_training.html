@@ -1,31 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Активная тренировка</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+        .row {
+            display: flex;
+            align-items: flex-start;
+            gap: 40px;
+        }
+        .left-column {
+            flex: 0 0 300px;
+        }
+        .right-column {
+            flex: 1;
+        }
+        .exercise-set {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        .exercise-set label {
+            display: block;
+            margin: 5px 0 2px;
+        }
+        .set-block {
+            margin-bottom: 10px;
+        }
+        button.small {
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        #exercise-names {
+            margin-top: 10px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Тренировка: {{ workout.date }} — {{ workout.title }}</h2>
+<p>Продолжительность: {{ duration }} мин</p>
+<hr>
+
 <form method="POST" action="{{ url_for('active_training', workout_id=workout.id) }}">
+<div class="row">
     <div class="left-column">
         <label>Добавить упражнение:</label>
-        <select name="exercise_id" required>
+        <select name="exercise_id">
             <option value="">Выберите упражнение</option>
             {% for ex in exercises %}
-                <option value="{{ ex.id }}">{{ ex.name }}</option>
+            <option value="{{ ex.id }}">{{ ex.name }}</option>
             {% endfor %}
         </select>
-        <input type="number" name="sets_count" value="1" min="1" max="20" required>
-        <button type="submit" name="action" value="add_exercise">Добавить</button>
+        <input type="number" name="sets_count" value="1" min="1" max="20" style="width: 50px">
+        <button name="action" value="add" type="submit">Добавить</button>
+
+        <div id="exercise-names">
+            {% for ex_id, sets in staged_sets.items() %}
+                <div>{{ sets[0].name }} — {{ sets|length }} подход(ов)</div>
+            {% endfor %}
+        </div>
     </div>
 
-    {% for ex_id, sets in grouped_sets.items() %}
-        <div class="exercise-set">
-            <strong>{{ sets[0].name }}</strong>
-            {% for set in sets %}
-                <div>
-                    Подход {{ loop.index }}:
-                    Вес (кг): <input type="number" name="weight_{{ set.id }}" value="{{ set.weight_kg or '' }}">
-                    Повторы: <input type="number" name="reps_{{ set.id }}" value="{{ set.reps or '' }}">
-                </div>
-            {% endfor %}
-            <button type="submit" name="action" value="save_exercise_{{ ex_id }}">Сохранить упражнение</button>
-            <button type="submit" name="action" value="remove_exercise_{{ ex_id }}">Удалить упражнение</button>
-        </div>
-    {% endfor %}
-
-    <br>
-    <button type="submit" name="action" value="finish">Завершить тренировку</button>
+    <div class="right-column">
+        {% for ex_id, sets in staged_sets.items() %}
+            <div class="exercise-set">
+                <strong>{{ sets[0].name }}</strong>
+                {% for set in sets %}
+                    <div class="set-block">
+                        <label>Подход {{ loop.index }}</label>
+                        Вес (кг): <input type="number" step="0.1" name="weights_{{ set.uuid }}" value="{{ set.weight_kg or '' }}">
+                        Повторы: <input type="number" name="reps_{{ set.uuid }}" value="{{ set.reps or '' }}">
+                    </div>
+                {% endfor %}
+                <button name="action" value="add_set" formaction="{{ url_for('add_temp_set', workout_id=workout.id, exercise_id=ex_id) }}">Добавить подход</button>
+                <button name="action" value="remove_set" formaction="{{ url_for('remove_temp_set', workout_id=workout.id, exercise_id=ex_id) }}">Удалить подход</button>
+                <br>
+                <button name="action" value="save_exercise" formaction="{{ url_for('save_exercise', workout_id=workout.id, exercise_id=ex_id) }}">Сохранить упражнение</button>
+                <button name="action" value="discard_exercise" formaction="{{ url_for('discard_exercise', workout_id=workout.id, exercise_id=ex_id) }}">Удалить упражнение</button>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+<br>
+<button type="submit" name="action" value="save_all">Сохранить всё</button>
+<button type="submit" name="action" value="finish">Завершить тренировку</button>
 </form>
+
+</body>
+</html>
