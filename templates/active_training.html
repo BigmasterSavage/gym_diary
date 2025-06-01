@@ -65,7 +65,7 @@
     </div>
 
     <div class="right-column">
-        {% for ex_id, sets in grouped_sets|reverse %}
+        {% for ex_id, sets in grouped_sets.items()|reverse %}
             <div class="exercise-set">
                 <strong>{{ sets[0].name }}</strong>
                 {% for set in sets %}
