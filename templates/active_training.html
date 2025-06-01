@@ -8,75 +8,95 @@
             font-family: sans-serif;
             padding: 20px;
         }
-        .exercise-block {
+        .row {
+            display: flex;
+            align-items: flex-start;
+            gap: 40px;
+        }
+        .left-column {
+            flex: 0 0 300px;
+        }
+        .exercise-set {
             border: 1px solid #ccc;
             padding: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
-        .set-row {
-            margin: 5px 0;
+        .exercise-set label {
+            display: block;
+            margin: 5px 0 2px;
         }
-        button {
+        .set-block {
+            margin-bottom: 10px;
+        }
+        button.small {
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        #exercise-names {
             margin-top: 10px;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
 
 <h2>Тренировка: {{ workout.date }} — {{ workout.title }}</h2>
-<p>Продолжительность: {{ duration_minutes or 0 }} мин</p>
-
+<p>Продолжительность: <span id="timer">0 мин</span></p>
 <hr>
 
-<h3>Добавить упражнение</h3>
-<form method="post">
-    <input type="hidden" name="action" value="add_exercise">
-    <label>Упражнение:</label>
-    <select name="exercise_id" required>
-        <option value="">— выберите —</option>
-        {% for ex in exercises %}
-        <option value="{{ ex.id }}">{{ ex.name }}</option>
-        {% endfor %}
-    </select>
-    <button type="submit">Добавить</button>
-</form>
+<form method="POST" action="{{ url_for('active_training', workout_id=workout.id) }}">
+<div class="row">
+    <div class="left-column">
+        <label>Добавить упражнение:</label>
+        <select name="exercise_id" id="exercise-select">
+            <option value="">Выберите упражнение</option>
+            {% for ex in exercises %}
+            <option value="{{ ex.id }}">{{ ex.name }}</option>
+            {% endfor %}
+        </select>
+        <input type="number" id="sets-count" name="sets_count" value="1" min="1" max="20" style="width: 50px">
+        <button name="action" value="add" type="submit">Добавить</button>
 
-{% for item in workout_exercises %}
-<div class="exercise-block">
-    <h4>{{ item.exercise_name }}</h4>
-    <form method="post">
-        <input type="hidden" name="action" value="add_set">
-        <input type="hidden" name="exercise_id" value="{{ item.exercise_id }}">
-        <label>Вес (кг):</label>
-        <input type="number" name="weight_kg" step="0.1" required>
-        <label>Повторы:</label>
-        <input type="number" name="reps" required>
-        <button type="submit">Добавить подход</button>
-    </form>
+        <div id="exercise-names">
+            {% for ex_id, sets in grouped_sets.items() %}
+                <div>{{ sets[0].name }} — {{ sets|length }} подход(ов)</div>
+            {% endfor %}
+        </div>
+    </div>
 
-    {% if item.sets %}
-    <ul>
-        {% for s in item.sets %}
-        <li class="set-row">
-            {{ s.weight_kg }} кг × {{ s.reps }}
-            <form method="post" style="display:inline">
-                <input type="hidden" name="action" value="delete_set">
-                <input type="hidden" name="set_id" value="{{ s.id }}">
-                <button type="submit">Удалить</button>
-            </form>
-        </li>
+    <div id="exercise-list" class="right-column">
+        {% for ex_id, sets in grouped_sets.items() %}
+            <div class="exercise-set">
+                <strong>{{ sets[0].name }}</strong>
+                {% for set in sets %}
+                    <div class="set-block">
+                        <label>Подход {{ loop.index }}</label>
+                        Вес (кг): <input type="number" step="0.1" name="weights_{{ set.id }}" value="{{ set.weight_kg or '' }}">
+                        Повторы: <input type="number" name="reps_{{ set.id }}" value="{{ set.reps or '' }}">
+                    </div>
+                {% endfor %}
+                <button name="action" value="add_set" formaction="{{ url_for('add_set', workout_id=workout.id, exercise_id=ex_id) }}">+ подход</button>
+                <button name="action" value="remove" formaction="{{ url_for('remove_exercise', workout_id=workout.id, exercise_id=ex_id) }}">Удалить упражнение</button>
+            </div>
         {% endfor %}
-    </ul>
-    {% endif %}
+    </div>
 </div>
-{% endfor %}
-
-<form method="post">
-    <input type="hidden" name="action" value="finish">
-    <button type="submit">Завершить тренировку</button>
+<br>
+<button type="submit" name="action" value="save">Сохранить</button>
+<button type="submit" name="action" value="finish">Завершить тренировку</button>
 </form>
 
-<a href="{{ url_for('menu') }}">Назад</a>
+<script>
+    const workoutStart = new Date("{{ workout.start_time.isoformat() }}");
+    function updateTimer() {
+        const now = new Date();
+        const diffMs = now - workoutStart;
+        const minutes = Math.floor(diffMs / 60000);
+        document.getElementById("timer").textContent = `${minutes} мин`;
+    }
+    updateTimer();
+    setInterval(updateTimer, 60000);
+</script>
 
 </body>
 </html>
