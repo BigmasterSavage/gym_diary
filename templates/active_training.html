@@ -40,7 +40,7 @@
 </head>
 <body>
 
-<h2>Тренировка: {{ workout.date }} — {{ workout.name }}</h2>
+<h2>Тренировка: {{ workout.date }} — {{ workout.title }}</h2>
 <p>Продолжительность: <span id="timer">0 мин</span></p>
 <hr>
 
@@ -148,6 +148,9 @@
         }).then(() => window.location.href = '/menu');
     }
 </script>
+
+</body>
+</html>
 
 </body>
 </html>
