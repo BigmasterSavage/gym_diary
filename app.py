@@ -143,83 +143,92 @@ def active_training(workout_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=DictCursor)
+    with get_db_connection() as conn:
+        with conn.cursor(cursor_factory=DictCursor) as cur:
 
-    cur.execute("SELECT * FROM workouts WHERE id = %s", (workout_id,))
-    workout = cur.fetchone()
-    if not workout:
-        flash("Тренировка не найдена")
-        return redirect(url_for('menu'))
+            # Получаем тренировку
+            cur.execute("SELECT * FROM workouts WHERE id = %s", (workout_id,))
+            workout = cur.fetchone()
+            if not workout:
+                flash("Тренировка не найдена")
+                return redirect(url_for('menu'))
 
-    if request.method == 'POST':
-        action = request.form.get('action')
+            # Обработка POST-запроса
+            if request.method == 'POST':
+                action = request.form.get('action')
 
-        if action == 'add_exercise':
-            ex_id = request.form.get('exercise_id')
-            sets_count = int(request.form.get('sets_count'))
-            for _ in range(sets_count):
-                cur.execute("""
-                    INSERT INTO sets (workout_id, exercise_id)
-                    VALUES (%s, %s)
-                """, (workout_id, ex_id))
-            conn.commit()
+                # Добавление упражнения
+                if action == 'add_exercise':
+                    ex_id = request.form.get('exercise_id')
+                    sets_count = int(request.form.get('sets_count', 0))
+                    if ex_id and sets_count > 0:
+                        for _ in range(sets_count):
+                            cur.execute("""
+                                INSERT INTO sets (workout_id, exercise_id)
+                                VALUES (%s, %s)
+                            """, (workout_id, ex_id))
+                        conn.commit()
 
-        elif action.startswith('save_exercise_'):
-            ex_id = action.split('_')[-1]
+                # Сохранение данных подходов для одного упражнения
+                elif action.startswith('save_exercise_'):
+                    ex_id = action.split('_')[-1]
+                    cur.execute("""
+                        SELECT id FROM sets
+                        WHERE workout_id = %s AND exercise_id = %s
+                        ORDER BY id
+                    """, (workout_id, ex_id))
+                    sets = cur.fetchall()
+
+                    for s in sets:
+                        weight = request.form.get(f'weight_{s["id"]}') or None
+                        reps = request.form.get(f'reps_{s["id"]}') or None
+                        cur.execute("""
+                            UPDATE sets SET weight_kg = %s, reps = %s
+                            WHERE id = %s
+                        """, (weight, reps, s["id"]))
+                    conn.commit()
+
+                # Удаление всех подходов по упражнению
+                elif action.startswith('remove_exercise_'):
+                    ex_id = action.split('_')[-1]
+                    cur.execute("DELETE FROM sets WHERE workout_id = %s AND exercise_id = %s",
+                                (workout_id, ex_id))
+                    conn.commit()
+
+                # Завершение тренировки
+                elif action == 'finish':
+                    now = datetime.now()
+                    duration = (now - workout['start_time']).seconds // 60
+                    cur.execute("""
+                        UPDATE workouts SET duration_minutes = %s WHERE id = %s
+                    """, (duration, workout_id))
+                    conn.commit()
+                    return redirect(url_for('menu'))
+
+            # Получаем список всех доступных упражнений
+            cur.execute("SELECT id, name FROM exercises ORDER BY name")
+            exercises = cur.fetchall()
+
+            # Получаем все подходы, связанные с тренировкой
             cur.execute("""
-                SELECT id FROM sets
-                WHERE workout_id = %s AND exercise_id = %s
-                ORDER BY id
-            """, (workout_id, ex_id))
+                SELECT sets.*, exercises.name
+                FROM sets
+                JOIN exercises ON sets.exercise_id = exercises.id
+                WHERE workout_id = %s
+                ORDER BY exercise_id, sets.id
+            """, (workout_id,))
             sets = cur.fetchall()
+
+            # Группируем по exercise_id
+            grouped_sets = {}
             for s in sets:
-                weight = request.form.get(f'weight_{s["id"]}') or None
-                reps = request.form.get(f'reps_{s["id"]}') or None
-                cur.execute("""
-                    UPDATE sets SET weight_kg = %s, reps = %s
-                    WHERE id = %s
-                """, (weight, reps, s["id"]))
-            conn.commit()
+                grouped_sets.setdefault(s['exercise_id'], []).append(s)
 
-        elif action.startswith('remove_exercise_'):
-            ex_id = action.split('_')[-1]
-            cur.execute("DELETE FROM sets WHERE workout_id = %s AND exercise_id = %s", (workout_id, ex_id))
-            conn.commit()
-
-        elif action == 'finish':
-            now = datetime.now()
-            duration = (now - workout['start_time']).seconds // 60
-            cur.execute("""
-                UPDATE workouts SET duration_minutes = %s WHERE id = %s
-            """, (duration, workout_id))
-            conn.commit()
-            conn.close()
-            return redirect(url_for('menu'))
-
-    # Получаем список упражнений
-    cur.execute("SELECT id, name FROM exercises ORDER BY name")
-    exercises = cur.fetchall()
-
-    # Получаем подходы
-    cur.execute("""
-        SELECT sets.*, exercises.name
-        FROM sets JOIN exercises ON sets.exercise_id = exercises.id
-        WHERE workout_id = %s ORDER BY exercise_id, sets.id
-    """, (workout_id,))
-    sets = cur.fetchall()
-
-    # Группировка по exercise_id
-    grouped_sets = {}
-    for s in sets:
-        grouped_sets.setdefault(s['exercise_id'], []).append(s)
-
-    conn.close()
     return render_template('active_training.html',
                            workout=workout,
                            exercises=exercises,
                            grouped_sets=grouped_sets)
-
+    
 
 @app.route('/finish/<int:workout_id>', methods=['POST'])
 def finish_training(workout_id):
