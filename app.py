@@ -104,7 +104,7 @@ def exercises():
 
     return render_template('exercises.html', exercises=exercises_list)
 
-# app.py (без изменений)
+
 @app.route('/createtraining', methods=['GET', 'POST'])
 def createtraining():
     if 'username' not in session:
@@ -147,8 +147,9 @@ def createtraining():
 
                 conn.commit()
 
-        flash("Тренировка успешно создана!")
-        return redirect(url_for('menu'))
+        # 👇 Исправленный переход
+        session['workout_id'] = workout_id
+        return redirect(url_for('activetraining'))
 
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=DictCursor) as cur:
