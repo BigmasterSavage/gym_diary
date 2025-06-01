@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS workouts (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
     date DATE NOT NULL DEFAULT CURRENT_DATE,
+    title TEXT,
     note TEXT,
     intensity VARCHAR(20)
         CHECK (
