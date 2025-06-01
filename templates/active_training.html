@@ -40,15 +40,13 @@
 </head>
 <body>
 
-<h2>Тренировка: {{ workout.date }} — {{ workout.note }}</h2>
+<h2>Тренировка: {{ workout.date }} — {{ workout.name }}</h2>
 <p>Продолжительность: <span id="timer">0 мин</span></p>
 <hr>
 
 <div class="row">
     <div class="left-column">
         <label>Добавить упражнение:</label>
-        <input type="text" id="search" placeholder="Начните вводить...">
-        <br><br>
         <select id="exercise-select">
             <option value="">Выберите упражнение</option>
             {% for ex in exercises %}
@@ -90,7 +88,9 @@
         // Добавить в список названий
         const namesList = document.getElementById("exercise-names");
         const nameItem = document.createElement("div");
-        nameItem.textContent = exName;
+        const nameId = `name-${exerciseCounter}`;
+        nameItem.id = nameId;
+        nameItem.textContent = `${exName} — ${sets} подход(ов)`;
         namesList.appendChild(nameItem);
 
         const container = document.getElementById("exercise-list");
@@ -100,18 +100,18 @@
         block.className = "exercise-set";
         block.id = blockId;
         block.innerHTML = `<strong>Упражнение ID: ${exId}</strong><div class="sets"></div>
-            <button class="small" onclick="addSet('${blockId}')">+ подход</button>
-            <button class="small" onclick="removeExercise('${blockId}', this)">Удалить упражнение</button>`;
+            <button class="small" onclick="addSet('${blockId}', '${nameId}')">+ подход</button>
+            <button class="small" onclick="removeExercise('${blockId}', '${nameId}')">Удалить упражнение</button>`;
 
         container.appendChild(block);
 
         const setsContainer = block.querySelector(".sets");
         for (let i = 0; i < sets; i++) {
-            addSet(blockId);
+            addSet(blockId, nameId);
         }
     }
 
-    function addSet(blockId) {
+    function addSet(blockId, nameId) {
         const setsContainer = document.querySelector(`#${blockId} .sets`);
         const index = setsContainer.children.length + 1;
 
@@ -121,25 +121,25 @@
             <label>Подход ${index}</label>
             Вес (кг): <input type="number" step="0.1">
             Повторы: <input type="number">
-            <button class="small" onclick="this.parentElement.remove()">Удалить</button>
+            <button class="small" onclick="this.parentElement.remove(); updateSetCount('${blockId}', '${nameId}')">Удалить</button>
         `;
         setsContainer.appendChild(setDiv);
+        updateSetCount(blockId, nameId);
     }
 
-    function removeExercise(blockId, button) {
+    function removeExercise(blockId, nameId) {
         const block = document.getElementById(blockId);
+        const nameItem = document.getElementById(nameId);
         if (block) block.remove();
+        if (nameItem) nameItem.remove();
+    }
 
-        // Также удалить название из списка
-        const exName = block.querySelector("strong").textContent;
-        const namesList = document.getElementById("exercise-names");
-        const items = Array.from(namesList.children);
-        for (let item of items) {
-            if (item.textContent.includes(exName)) {
-                item.remove();
-                break;
-            }
-        }
+    function updateSetCount(blockId, nameId) {
+        const block = document.getElementById(blockId);
+        const nameItem = document.getElementById(nameId);
+        const count = block.querySelectorAll(".set-block").length;
+        const textParts = nameItem.textContent.split(" — ");
+        nameItem.textContent = `${textParts[0]} — ${count} подход(ов)`;
     }
 
     function finishTraining() {
