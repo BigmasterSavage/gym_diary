@@ -53,7 +53,7 @@
             <option value="{{ ex.id }}">{{ ex.name }}</option>
             {% endfor %}
         </select>
-        <input type="number" id="sets-count" value="1" min="1" max="20" style="width: 50px">
+        <input type="number" id="sets-count" value="0" min="0" max="20" style="width: 50px">
         <button onclick="addExercise()">Добавить</button>
 
         <div id="exercise-names"></div>
@@ -66,7 +66,7 @@
 <button onclick="finishTraining()">Завершить тренировку</button>
 
 <script>
-    const workoutStart = new Date("{{ workout.start_time.isoformat() }}");
+    const workoutStart = new Date(); // время запуска страницы = начало тренировки
     function updateTimer() {
         const now = new Date();
         const diffMs = now - workoutStart;
@@ -85,7 +85,6 @@
         const sets = parseInt(document.getElementById("sets-count").value);
         if (!exId) return alert("Выберите упражнение");
 
-        // Добавить в список названий
         const namesList = document.getElementById("exercise-names");
         const nameItem = document.createElement("div");
         const nameId = `name-${exerciseCounter}`;
@@ -143,9 +142,19 @@
     }
 
     function finishTraining() {
-        fetch(`finish`, {
-            method: 'POST'
-        }).then(() => window.location.href = '/menu');
+        const now = new Date();
+        const duration = Math.floor((now - workoutStart) / 60000);
+        fetch(`/finish/{{ workout.id }}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ duration: duration })
+        }).then(res => {
+            if (res.ok) {
+                window.location.href = '/menu';
+            } else {
+                alert("Ошибка при завершении");
+            }
+        });
     }
 </script>
 
