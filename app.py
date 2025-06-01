@@ -113,50 +113,29 @@ def createtraining():
     if request.method == 'POST':
         user_id = session['user_id']
         date = request.form.get('date')
+        title = request.form.get('title')  # <-- новое поле
         note = request.form.get('note', '')
+        intensity = request.form.get('intensity') or None
 
-        exercise_ids = request.form.getlist('exercise_id')
-        weights = request.form.getlist('weight_kg')
-        reps = request.form.getlist('reps')
-        set_notes = request.form.getlist('set_note')
-
-        if not date:
-            flash("Выберите дату тренировки")
+        if not date or not title:
+            flash("Укажите дату и название тренировки")
             return redirect(url_for('createtraining'))
 
         with get_db_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO workouts (user_id, date, note)
-                    VALUES (%s, %s, %s)
+                    INSERT INTO workouts (user_id, date, title, note, intensity, start_time)
+                    VALUES (%s, %s, %s, %s, %s, NOW())
                     RETURNING id
-                """, (user_id, date, note))
+                """, (user_id, date, title, note, intensity))
                 workout_id = cur.fetchone()[0]
-
-                for i in range(len(exercise_ids)):
-                    eid = exercise_ids[i]
-                    weight = weights[i] or None
-                    rep = reps[i] or None
-                    set_note = set_notes[i] or ''
-
-                    if eid and rep:
-                        cur.execute("""
-                            INSERT INTO sets (workout_id, exercise_id, weight_kg, reps, note)
-                            VALUES (%s, %s, %s, %s, %s)
-                        """, (workout_id, eid, weight, rep, set_note))
 
                 conn.commit()
 
-        # 👇 Исправленный переход
         session['workout_id'] = workout_id
         return redirect(url_for('active_training', workout_id=workout_id))
 
-    with get_db_connection() as conn:
-        with conn.cursor(cursor_factory=DictCursor) as cur:
-            cur.execute("SELECT id, name FROM exercises ORDER BY name")
-            exercises_list = cur.fetchall()
-
-    return render_template('createtraining.html', exercises=exercises_list)
+    return render_template('createtraining.html')
 
 
 @app.route('/active_training/<int:workout_id>', methods=['GET'])
