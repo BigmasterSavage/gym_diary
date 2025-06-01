@@ -2,97 +2,152 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Упражнения</title>
+    <title>Активная тренировка</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: sans-serif;
             padding: 20px;
-            background-color: #f8f8f8;
         }
-
-        h2, h3 {
-            color: #333;
+        .row {
+            display: flex;
+            align-items: flex-start;
+            gap: 40px;
         }
-
-        form {
+        .left-column {
+            flex: 0 0 300px;
+        }
+        .exercise-set {
+            border: 1px solid #ccc;
+            padding: 10px;
             margin-bottom: 15px;
         }
-
-        textarea {
-            width: 100%;
-            height: 60px;
-        }
-
-        ul {
-            list-style-type: none;
-            padding-left: 0;
-        }
-
-        li {
-            background: #fff;
-            border: 1px solid #ddd;
-            margin-bottom: 10px;
-            padding: 10px;
-        }
-
-        .btn {
-            background-color: #007BFF;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-
-        .btn:hover {
-            background-color: #0056b3;
-        }
-
-        label {
+        .exercise-set label {
             display: block;
+            margin: 5px 0 2px;
+        }
+        .set-block {
+            margin-bottom: 10px;
+        }
+        button.small {
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        #exercise-names {
             margin-top: 10px;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
 
-<h2>Упражнения</h2>
-
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <ul>
-    {% for message in messages %}
-      <li>{{ message }}</li>
-    {% endfor %}
-    </ul>
-  {% endif %}
-{% endwith %}
-
-<h3>Добавить упражнение</h3>
-<form method="post">
-    <input type="hidden" name="action" value="add">
-    <label>Название:</label>
-    <input type="text" name="name" required>
-    <label>Описание:</label>
-    <textarea name="description"></textarea>
-    <button type="submit" class="btn">Добавить</button>
-</form>
-
+<h2>Тренировка: {{ workout.date }} — {{ workout.note }}</h2>
+<p>Продолжительность: <span id="timer">0 мин</span></p>
 <hr>
 
-<h3>Список упражнений</h3>
-<ul>
-    {% for ex in exercises %}
-        <li>
-            <strong>{{ ex.name }}</strong> — {{ ex.description or '' }}
-            <form method="post" style="display:inline;">
-                <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="exercise_id" value="{{ ex.id }}">
-                <button type="submit" class="btn" onclick="return confirm('Вы уверены?')">Удалить</button>
-            </form>
-        </li>
-    {% endfor %}
-</ul>
+<div class="row">
+    <div class="left-column">
+        <label>Добавить упражнение:</label>
+        <input type="text" id="search" placeholder="Начните вводить...">
+        <br><br>
+        <select id="exercise-select">
+            <option value="">Выберите упражнение</option>
+            {% for ex in exercises %}
+            <option value="{{ ex.id }}">{{ ex.name }}</option>
+            {% endfor %}
+        </select>
+        <input type="number" id="sets-count" value="1" min="1" max="20" style="width: 50px">
+        <button onclick="addExercise()">Добавить</button>
+
+        <div id="exercise-names"></div>
+    </div>
+
+    <div id="exercise-list" class="right-column"></div>
+</div>
+
+<br>
+<button onclick="finishTraining()">Завершить тренировку</button>
+
+<script>
+    const workoutStart = new Date("{{ workout.start_time.isoformat() }}");
+    function updateTimer() {
+        const now = new Date();
+        const diffMs = now - workoutStart;
+        const minutes = Math.floor(diffMs / 60000);
+        document.getElementById("timer").textContent = `${minutes} мин`;
+    }
+    updateTimer();
+    setInterval(updateTimer, 60000);
+
+    let exerciseCounter = 0;
+
+    function addExercise() {
+        const exSelect = document.getElementById("exercise-select");
+        const exId = exSelect.value;
+        const exName = exSelect.options[exSelect.selectedIndex].text;
+        const sets = parseInt(document.getElementById("sets-count").value);
+        if (!exId) return alert("Выберите упражнение");
+
+        // Добавить в список названий
+        const namesList = document.getElementById("exercise-names");
+        const nameItem = document.createElement("div");
+        nameItem.textContent = exName;
+        namesList.appendChild(nameItem);
+
+        const container = document.getElementById("exercise-list");
+        const block = document.createElement("div");
+        const blockId = `exercise-${exerciseCounter++}`;
+
+        block.className = "exercise-set";
+        block.id = blockId;
+        block.innerHTML = `<strong>Упражнение ID: ${exId}</strong><div class="sets"></div>
+            <button class="small" onclick="addSet('${blockId}')">+ подход</button>
+            <button class="small" onclick="removeExercise('${blockId}', this)">Удалить упражнение</button>`;
+
+        container.appendChild(block);
+
+        const setsContainer = block.querySelector(".sets");
+        for (let i = 0; i < sets; i++) {
+            addSet(blockId);
+        }
+    }
+
+    function addSet(blockId) {
+        const setsContainer = document.querySelector(`#${blockId} .sets`);
+        const index = setsContainer.children.length + 1;
+
+        const setDiv = document.createElement("div");
+        setDiv.className = "set-block";
+        setDiv.innerHTML = `
+            <label>Подход ${index}</label>
+            Вес (кг): <input type="number" step="0.1">
+            Повторы: <input type="number">
+            <button class="small" onclick="this.parentElement.remove()">Удалить</button>
+        `;
+        setsContainer.appendChild(setDiv);
+    }
+
+    function removeExercise(blockId, button) {
+        const block = document.getElementById(blockId);
+        if (block) block.remove();
+
+        // Также удалить название из списка
+        const exName = block.querySelector("strong").textContent;
+        const namesList = document.getElementById("exercise-names");
+        const items = Array.from(namesList.children);
+        for (let item of items) {
+            if (item.textContent.includes(exName)) {
+                item.remove();
+                break;
+            }
+        }
+    }
+
+    function finishTraining() {
+        fetch(`finish`, {
+            method: 'POST'
+        }).then(() => window.location.href = '/menu');
+    }
+</script>
 
 </body>
 </html>
