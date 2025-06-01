@@ -162,11 +162,15 @@ def active_training(workout_id):
                     ex_id = request.form.get('exercise_id')
                     sets_count = int(request.form.get('sets_count', 0))
                     if ex_id and sets_count > 0:
-                        for _ in range(sets_count):
+                        cur.execute("""
+                            SELECT COALESCE(MAX(order_num), 0) FROM sets WHERE workout_id = %s
+                        """, (workout_id,))
+                        max_order = cur.fetchone()[0]
+                        for i in range(sets_count):
                             cur.execute("""
-                                INSERT INTO sets (workout_id, exercise_id)
-                                VALUES (%s, %s)
-                            """, (workout_id, ex_id))
+                                INSERT INTO sets (workout_id, exercise_id, order_num)
+                                VALUES (%s, %s, %s)
+                            """, (workout_id, ex_id, max_order + i + 1))
                         conn.commit()
 
                 # Сохранение данных подходов для одного упражнения
