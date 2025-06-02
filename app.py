@@ -140,6 +140,7 @@ def createtraining():
 
 @app.route('/activetraining/<int:workout_id>', methods=['GET', 'POST'])
 def active_training(workout_id):
+    print("Request method:", request.method)
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
