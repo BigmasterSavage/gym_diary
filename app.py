@@ -216,7 +216,7 @@ def active_training(workout_id):
                 # Завершение тренировки
                 elif action == 'finish':
                     now = datetime.now()
-                    duration = (now - workout['start_time']).total_seconds() // 60
+                    duration = max(0, (now - workout['start_time']).total_seconds() // 60 - 600)
                     cur.execute("""
                         UPDATE workouts SET duration_minutes = %s WHERE id = %s
                     """, (duration, workout_id))
