@@ -178,7 +178,13 @@ def active_training(workout_id):
                 # Добавление подхода
                 elif action.startswith('add_set_'):
                     try:
-                        ex_id = int(action.split('_')[1])
+                        # Проверяем, что после add_set_ следует число
+                        parts = action.split('_')
+                        if len(parts) < 3 or not parts[2].isdigit():
+                            raise ValueError("Неверный формат команды")
+
+                        ex_id = int(parts[2])
+
                         cur.execute("SELECT COALESCE(MAX(order_num), 0) FROM sets WHERE workout_id = %s", (workout_id,))
                         max_order = cur.fetchone()[0]
                         cur.execute("""
