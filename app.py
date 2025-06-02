@@ -208,13 +208,6 @@ def active_training(workout_id):
                     cur.execute("DELETE FROM sets WHERE workout_id = %s AND exercise_id = %s",
                                 (workout_id, ex_id))
                     conn.commit()
-                    
-                # Удаление одного подхода
-                elif action == 'delete_set':
-                    set_id = request.form.get('set_id')
-                    if set_id:
-                        cur.execute("DELETE FROM sets WHERE id = %s", (set_id,))
-                        conn.commit()
                 
                 # Завершение тренировки
                 elif action == 'finish':
