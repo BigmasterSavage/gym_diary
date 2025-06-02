@@ -178,15 +178,20 @@ def active_training(workout_id):
                 # Добавление подхода
                 elif action.startswith('add_set_'):
                     try:
-                        ex_id = int(action.split('_')[1])  # add_set_123 → 123
+                        ex_id = int(action.split('_')[1])
+                        cur.execute("SELECT COALESCE(MAX(order_num), 0) FROM sets WHERE workout_id = %s", (workout_id,))
+                        max_order = cur.fetchone()[0]
                         cur.execute("""
-                            INSERT INTO sets (workout_id, exercise_id)
-                            VALUES (%s, %s)
-                        """, (workout_id, ex_id))
+                            INSERT INTO sets (workout_id, exercise_id, order_num)
+                            VALUES (%s, %s, %s)
+                        """, (workout_id, ex_id, max_order + 1))
                         conn.commit()
                         return redirect(url_for('active_training', workout_id=workout_id))
-                    except (ValueError, IndexError):
-                        flash("Неверный формат запроса на добавление подхода")
+                    except Exception as e:
+                        print("Ошибка при добавлении подхода:", str(e))
+                        flash("Не удалось добавить подход")
+                        conn.rollback()
+                        return redirect(url_for('active_training', workout_id=workout_id))
                         
                 # Удаление одного подхода по set_id
                 elif action.startswith('delete_set_'):
