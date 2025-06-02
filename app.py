@@ -161,13 +161,18 @@ def active_training(workout_id):
                 if action == 'add_exercise':
                     ex_id = request.form.get('exercise_id')
                     sets_count = 3
-                    for _ in range(sets_count):
+                    if ex_id and sets_count > 0:
                         cur.execute("""
-                            INSERT INTO sets (workout_id, exercise_id, order_num)
-                            VALUES (%s, %s, %s)
-                        """, (workout_id, ex_id))
-                    conn.commit()
-                    return redirect(url_for('active_training', workout_id=workout_id))
+                            SELECT COALESCE(MAX(order_num), 0) FROM sets WHERE workout_id = %s
+                        """, (workout_id,))
+                        max_order = cur.fetchone()[0]
+                        for _ in range(sets_count):
+                            cur.execute("""
+                                INSERT INTO sets (workout_id, exercise_id, order_num)
+                                VALUES (%s, %s, %s)
+                            """, (workout_id, ex_id, max_order + 1))
+                        conn.commit()
+                        return redirect(url_for('active_training', workout_id=workout_id))
                         
                 # Удаление одного подхода по set_id
                 elif action.startswith('delete_set_'):
