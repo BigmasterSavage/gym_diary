@@ -15,7 +15,14 @@ services:
 
   app:
     build: .
-    command: gunicorn -b 0.0.0.0:5000 app:app
+    command: >
+      gunicorn
+      -b 0.0.0.0:5000
+      -w 3
+      --timeout 120
+      --max-requests 1000
+      --max-requests-jitter 50
+      app:app
     environment:
       SECRET_KEY: fallback-secret-key
     ports:
