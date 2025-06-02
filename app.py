@@ -172,7 +172,17 @@ def active_training(workout_id):
                                 VALUES (%s, %s, %s)
                             """, (workout_id, ex_id, max_order + 1))
                         conn.commit()
-
+                        
+                # Удаление одного подхода по set_id
+                elif action.startswith('delete_set_'):
+                    try:
+                        set_id = int(action.split('_')[2])  # delete_set_123 → 123
+                        cur.execute("DELETE FROM sets WHERE id = %s AND workout_id = %s",
+                                    (set_id, workout_id))
+                        conn.commit()
+                    except (ValueError, IndexError):
+                        flash("Неверный формат запроса на удаление подхода")
+                        
                 # Сохранение данных подходов для одного упражнения
                 elif action.startswith('save_exercise_'):
                     ex_id = action.split('_')[-1]
