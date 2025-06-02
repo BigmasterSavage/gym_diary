@@ -41,7 +41,7 @@
 <body>
 
 <h2>Тренировка: {{ workout.date }} — {{ workout.title }}</h2>
-<p>Продолжительность: <span id="timer">0 мин</span></p>
+<p>Продолжительность: <span id="timer">{{ workout.duration_minutes }} мин</span></p>
 <hr>
 
 <form method="POST" action="{{ url_for('active_training', workout_id=workout.id) }}">
