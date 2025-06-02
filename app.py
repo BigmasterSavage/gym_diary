@@ -172,6 +172,7 @@ def active_training(workout_id):
                                 VALUES (%s, %s, %s)
                             """, (workout_id, ex_id, max_order + 1))
                         conn.commit()
+                        return redirect(url_for('active_training', workout_id=workout_id))
                         
                 # Удаление одного подхода по set_id
                 elif action.startswith('delete_set_'):
@@ -180,6 +181,7 @@ def active_training(workout_id):
                         cur.execute("DELETE FROM sets WHERE id = %s AND workout_id = %s",
                                     (set_id, workout_id))
                         conn.commit()
+                        return redirect(url_for('active_training', workout_id=workout_id))
                     except (ValueError, IndexError):
                         flash("Неверный формат запроса на удаление подхода")
                         
@@ -201,6 +203,7 @@ def active_training(workout_id):
                             WHERE id = %s
                         """, (weight, reps, s["id"]))
                     conn.commit()
+                    return redirect(url_for('active_training', workout_id=workout_id))
 
                 # Удаление всех подходов по упражнению
                 elif action.startswith('remove_exercise_'):
@@ -208,6 +211,7 @@ def active_training(workout_id):
                     cur.execute("DELETE FROM sets WHERE workout_id = %s AND exercise_id = %s",
                                 (workout_id, ex_id))
                     conn.commit()
+                    return redirect(url_for('active_training', workout_id=workout_id))
                 
                 # Завершение тренировки
                 elif action == 'finish':
