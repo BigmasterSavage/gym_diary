@@ -173,6 +173,19 @@ def active_training(workout_id):
                             """, (workout_id, ex_id, max_order + 1))
                         conn.commit()
                         return redirect(url_for('active_training', workout_id=workout_id))
+
+                # Добавление подхода
+                elif action.startswith('add_set_'):
+                    try:
+                        ex_id = int(action.split('_')[1])  # add_set_123 → 123
+                        cur.execute("""
+                            INSERT INTO sets (workout_id, exercise_id)
+                            VALUES (%s, %s)
+                        """, (workout_id, ex_id))
+                        conn.commit()
+                        return redirect(url_for('active_training', workout_id=workout_id))
+                    except (ValueError, IndexError):
+                        flash("Неверный формат запроса на добавление подхода")
                         
                 # Удаление одного подхода по set_id
                 elif action.startswith('delete_set_'):
