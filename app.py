@@ -165,7 +165,7 @@ def active_training(workout_id):
                         cur.execute("""
                             INSERT INTO sets (workout_id, exercise_id, order_num)
                             VALUES (%s, %s, %s)
-                        """, (workout_id, ex_id, max_order + 1))
+                        """, (workout_id, ex_id))
                     conn.commit()
                     return redirect(url_for('active_training', workout_id=workout_id))
                         
