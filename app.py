@@ -349,6 +349,13 @@ def workout_stats(workout_id):
 
             # Получаем все упражнения и подходы для этой тренировки
             cur.execute("""
+                SELECT 
+                    e.id AS exercise_id,
+                    e.name AS exercise_name,
+                    s.id AS set_id,
+                    s.weight_kg,
+                    s.reps,
+                    (s.weight_kg * s.reps) AS tonnage
                 FROM sets s
                 JOIN exercises e ON s.exercise_id = e.id
                 WHERE s.workout_id = %s
