@@ -56,11 +56,11 @@
         {% for exercise_id in exercise_order %}
         {% set exercise = exercises[exercise_id] %}
         <div class="card exercise-card">
-            <div class="card-header">
-                <h4>{{ exercise.name }}</h4>
-            </div>
-            <div class="card-body">
-                <table class="table">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ exercise.name }}</h4>
+                <span class="badge bg-primary rounded-pill">
+                    Тоннаж: {{ "%.1f"|format(exercise.total_tonnage) }} кг
+                <table class="table table-striped">
                     <thead>
                         <tr>
                             <th>Подход</th>

@@ -334,20 +334,18 @@ def workout_stats(workout_id):
 
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=DictCursor) as cur:
-            # General info
+            # Получаем информацию о тренировке
             cur.execute("""
-                SELECT *,
-                EXTRACT(EPOCH FROM (start_time + (duration_minutes * INTERVAL '1 minute') - start_time))/60 AS calculated_duration
-                FROM workouts
+                SELECT * FROM workouts
                 WHERE id = %s AND user_id = %s
             """, (workout_id, session['user_id']))
-            workout=cur.fetchone()
+            workout = cur.fetchone()
 
-            if not workout_id:
+            if not workout:
                 flash("Тренировка не найдена")
-                return redirect(url_for('mytrainings'))
+                return redirect(url_for('my_training'))
 
-            # Получаем все упражнения и подходы для этой тренировки
+            # Получаем все упражнения и подходы
             cur.execute("""
                 SELECT 
                     e.id AS exercise_id,
@@ -364,7 +362,7 @@ def workout_stats(workout_id):
             """, (workout_id,))
             sets = cur.fetchall()
 
-            # Группируем по упражнениям и считаем общий тоннаж
+            # Группируем по упражнениям
             exercises = {}
             exercise_order = []
             total_tonnage = 0
@@ -389,8 +387,8 @@ def workout_stats(workout_id):
 
     return render_template('workout_stats.html',
                            workout=workout,
-                           sets=sets,
                            exercises=exercises,
+                           exercise_order=exercise_order,
                            total_tonnage=total_tonnage)
 
 
