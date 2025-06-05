@@ -296,7 +296,7 @@ def finish_training(workout_id):
     return jsonify({'status': 'ok'})
 
 
-@app.route('/mytraining')
+@app.route('/my_trainings')
 def my_training():
     if 'user_id' not in session:
         return redirect(url_for('login'))
