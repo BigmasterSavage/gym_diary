@@ -42,6 +42,11 @@
             pointer-events: none;
             opacity: 0.65;
         }
+        /* Новый стиль для блока добавления упражнения */
+        .add-exercise-block {
+            position: sticky;
+            top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -55,9 +60,9 @@
     <form method="POST" action="{{ url_for('active_training', workout_id=workout.id) }}" id="trainingForm">
         <div class="row g-4">
 
-            <!-- Левая колонка -->
+            <!-- Левая колонка - блок добавления упражнения -->
             <div class="col-12 col-md-4">
-                <div class="card shadow-sm p-3 mb-4">
+                <div class="card shadow-sm p-3 mb-4 add-exercise-block">
                     <h5 class="mb-3">Добавить упражнение</h5>
                     <label for="exerciseSelect" class="form-label">Выберите упражнение:</label>
                     <select class="form-select mb-2" id="exerciseSelect" name="exercise_id" required>
@@ -66,7 +71,7 @@
                             <option value="{{ ex.id }}">{{ ex.name }}</option>
                         {% endfor %}
                     </select>
-                    <button name="action" value="add_exercise" type="submit" class="btn btn-primary w-100 mb-3">Добавить</button>
+                    <button name="action" value="add_exercise" type="submit" class="btn btn-primary w-100 mb-3" id="addExerciseBtn">Добавить</button>
 
                     <div id="exercise-names">
                         {% for ex_id, sets in grouped_sets.items()|reverse %}
@@ -76,7 +81,7 @@
                 </div>
             </div>
 
-            <!-- Правая колонка -->
+            <!-- Правая колонка - блоки упражнений -->
             <div class="col-12 col-md-8">
                 {% for ex_id, sets in grouped_sets.items() %}
                     <div class="card exercise-card shadow-sm mb-4 p-3" data-exercise-id="{{ ex_id }}">
@@ -148,6 +153,7 @@
     // Валидация подходов
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('trainingForm');
+        const addExerciseBtn = document.getElementById('addExerciseBtn');
 
         // Проверка заполненности всех подходов упражнения
         function checkExerciseSetsComplete(exerciseId) {
@@ -179,7 +185,7 @@
             });
         }
 
-        // Обработчик изменения полей ввода
+        // Обработчик изменения полей ввода (только для блоков упражнений)
         form.addEventListener('input', function(e) {
             if (e.target.classList.contains('weight-input') || e.target.classList.contains('reps-input')) {
                 const setBlock = e.target.closest('.set-block');
@@ -209,6 +215,9 @@
                 }
             });
         });
+
+        // Кнопка добавления упражнения всегда активна
+        addExerciseBtn.disabled = false;
 
         // Инициализация состояния кнопок при загрузке
         updateAddSetButtons();
