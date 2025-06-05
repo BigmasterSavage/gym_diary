@@ -355,7 +355,7 @@ def workout_stats(workout_id):
                     s.id AS set_id,
                     s.weight_kg,
                     s.reps,
-                    (s.weight_kg * s.reps) AS tonnage
+                    (s.weight_kg * s.reps) AS tonnage,
                     s.order_num
                 FROM sets s
                 JOIN exercises e ON s.exercise_id = e.id
