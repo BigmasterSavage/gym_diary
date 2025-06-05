@@ -42,10 +42,15 @@
             pointer-events: none;
             opacity: 0.65;
         }
-        /* Новый стиль для блока добавления упражнения */
         .add-exercise-block {
             position: sticky;
             top: 20px;
+        }
+        /* Стиль для ошибки выбора упражнения */
+        .exercise-select-error {
+            color: #dc3545;
+            font-size: 0.8rem;
+            display: none;
         }
     </style>
 </head>
@@ -65,13 +70,14 @@
                 <div class="card shadow-sm p-3 mb-4 add-exercise-block">
                     <h5 class="mb-3">Добавить упражнение</h5>
                     <label for="exerciseSelect" class="form-label">Выберите упражнение:</label>
-                    <select class="form-select mb-2" id="exerciseSelect" name="exercise_id" required>
+                    <select class="form-select mb-2" id="exerciseSelect" name="exercise_id">
                         <option value="">Выберите упражнение</option>
                         {% for ex in exercises %}
                             <option value="{{ ex.id }}">{{ ex.name }}</option>
                         {% endfor %}
                     </select>
-                    <button name="action" value="add_exercise" type="submit" class="btn btn-primary w-100 mb-3" id="addExerciseBtn">Добавить</button>
+                    <div class="exercise-select-error mb-2">Выберите один из пунктов списка.</div>
+                    <button name="action" value="add_exercise" type="button" class="btn btn-primary w-100 mb-3" id="addExerciseBtn">Добавить</button>
 
                     <div id="exercise-names">
                         {% for ex_id, sets in grouped_sets.items()|reverse %}
@@ -94,12 +100,12 @@
                                     <div class="col-md-6">
                                         <input type="number" step="0.1" class="form-control weight-input"
                                                name="weight_{{ set.id }}" value="{{ set.weight_kg or '' }}"
-                                               placeholder="Вес (кг)" required>
+                                               placeholder="Вес (кг)">
                                     </div>
                                     <div class="col-md-5">
                                         <input type="number" class="form-control reps-input"
                                                name="reps_{{ set.id }}" value="{{ set.reps or '' }}"
-                                               placeholder="Повторы" required>
+                                               placeholder="Повторы">
                                     </div>
                                     <div class="col-md-1 d-flex align-items-center">
                                         <button type="submit" name="action" value="delete_set_{{ set.id }}"
@@ -118,7 +124,7 @@
                                 Удалить упр.
                             </button>
                             <button name="action" value="add_set_{{ ex_id }}" type="button"
-                                    class="btn btn-secondary btn-add-set {% if not sets[-1].weight_kg or not sets[-1].reps %}disabled{% endif %}"
+                                    class="btn btn-secondary btn-add-set {% if sets and (not sets[-1].weight_kg or not sets[-1].reps) %}disabled{% endif %}"
                                     data-exercise-id="{{ ex_id }}">
                                 Добавить подход
                             </button>
@@ -150,15 +156,32 @@
     updateTimer();
     setInterval(updateTimer, 60000);
 
-    // Валидация подходов
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('trainingForm');
+        const exerciseSelect = document.getElementById('exerciseSelect');
         const addExerciseBtn = document.getElementById('addExerciseBtn');
+        const exerciseSelectError = document.querySelector('.exercise-select-error');
+
+        // Обработчик клика на кнопку "Добавить" (упражнение)
+        addExerciseBtn.addEventListener('click', function() {
+            if (!exerciseSelect.value) {
+                exerciseSelectError.style.display = 'block';
+                exerciseSelect.classList.add('is-invalid');
+                return;
+            }
+
+            exerciseSelectError.style.display = 'none';
+            exerciseSelect.classList.remove('is-invalid');
+
+            // Меняем тип кнопки на submit и отправляем форму
+            this.setAttribute('type', 'submit');
+            this.click();
+        });
 
         // Проверка заполненности всех подходов упражнения
         function checkExerciseSetsComplete(exerciseId) {
             const exerciseCard = document.querySelector(`.exercise-card[data-exercise-id="${exerciseId}"]`);
-            if (!exerciseCard) return false;
+            if (!exerciseCard) return true; // Если карточки нет, считаем что всё ок
 
             const weightInputs = exerciseCard.querySelectorAll('.weight-input');
             const repsInputs = exerciseCard.querySelectorAll('.reps-input');
@@ -175,17 +198,14 @@
         function updateAddSetButtons() {
             document.querySelectorAll('.btn-add-set').forEach(btn => {
                 const exerciseId = btn.dataset.exerciseId;
-                btn.disabled = !checkExerciseSetsComplete(exerciseId);
+                const isComplete = checkExerciseSetsComplete(exerciseId);
 
-                if (btn.disabled) {
-                    btn.classList.add('disabled');
-                } else {
-                    btn.classList.remove('disabled');
-                }
+                btn.disabled = !isComplete;
+                btn.classList.toggle('disabled', !isComplete);
             });
         }
 
-        // Обработчик изменения полей ввода (только для блоков упражнений)
+        // Обработчик изменения полей ввода
         form.addEventListener('input', function(e) {
             if (e.target.classList.contains('weight-input') || e.target.classList.contains('reps-input')) {
                 const setBlock = e.target.closest('.set-block');
@@ -215,9 +235,6 @@
                 }
             });
         });
-
-        // Кнопка добавления упражнения всегда активна
-        addExerciseBtn.disabled = false;
 
         // Инициализация состояния кнопок при загрузке
         updateAddSetButtons();
