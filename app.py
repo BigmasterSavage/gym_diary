@@ -327,6 +327,63 @@ def my_training():
                            completed_workouts = completed_workouts)
 
 
+@app.route('/workout_stats/<int:workout_id>')
+def workout_stats(workout_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    with get_db_connection() as conn:
+        with conn.cursor(cursor_factory=DictCursor) as cur:
+            # General info
+            cur.execute("""
+                SELECT *,
+                EXTRACT(EPOCH FROM (start_time + (duration_minutes * INTERVAL '1 minute') - start_time))/60 AS calculated_duration
+                FROM workouts
+                WHERE id = %s AND user_id = %s
+            """, (workout_id, session['user_id']))
+            workout=cur.fetchone()
+
+            if not workout_id:
+                flash("Тренировка не найдена")
+                return redirect(url_for('mytrainings'))
+
+            # Получаем все упражнения и подходы для этой тренировки
+            cur.execute("""
+                FROM sets s
+                JOIN exercises e ON s.exercise_id = e.id
+                WHERE s.workout_id = %s
+                ORDER BY e.name, s.order_num
+            """, (workout_id,))
+            sets = cur.fetchall()
+
+            # Группируем по упражнениям и считаем общий тоннаж
+            exercises = {}
+            total_tonnage = 0
+
+            for s in sets:
+                if s['exercise_id'] not in exercises:
+                    exercises[s['exercise_id']] = {
+                        'name': s['exercise_name'],
+                        'sets': [],
+                        'total_tonnage': 0
+                    }
+
+                exercises[s['exercise_id']]['sets'].append({
+                    'weight': s['weight_kg'],
+                    'reps': s['reps'],
+                    'tonnage': s['tonnage']
+                })
+                exercises[s['exercise_id']]['total_tonnage'] += s['tonnage'] or 0
+                total_tonnage += s['tonnage'] or 0
+
+    return render_template('workout_stats.html',
+                           workout=workout,
+                           sets=sets,
+                           exercises=exercises,
+                           total_tonnage=total_tonnage)
+
+
+
 @app.route('/logout')
 def logout():
     session.clear()
