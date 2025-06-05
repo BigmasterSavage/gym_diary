@@ -356,15 +356,17 @@ def workout_stats(workout_id):
                     s.weight_kg,
                     s.reps,
                     (s.weight_kg * s.reps) AS tonnage
+                    s.order_num
                 FROM sets s
                 JOIN exercises e ON s.exercise_id = e.id
                 WHERE s.workout_id = %s
-                ORDER BY e.name, s.order_num
+                ORDER BY s.order_num
             """, (workout_id,))
             sets = cur.fetchall()
 
             # Группируем по упражнениям и считаем общий тоннаж
             exercises = {}
+            exercise_order = []
             total_tonnage = 0
 
             for s in sets:
@@ -374,11 +376,13 @@ def workout_stats(workout_id):
                         'sets': [],
                         'total_tonnage': 0
                     }
+                    exercise_order.append(s['exercise_id'])
 
                 exercises[s['exercise_id']]['sets'].append({
                     'weight': s['weight_kg'],
                     'reps': s['reps'],
-                    'tonnage': s['tonnage']
+                    'tonnage': s['tonnage'],
+                    'order_num': s['order_num']
                 })
                 exercises[s['exercise_id']]['total_tonnage'] += s['tonnage'] or 0
                 total_tonnage += s['tonnage'] or 0
