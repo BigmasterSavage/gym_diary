@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Мои тренировки</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .workout-card {
+            transition: transform 0.2s;
+            margin-bottom: 1rem;
+        }
+        .workout-card:hover {
+            transform: translateY(-3px);
+        }
+        .active-workout {
+            border-left: 5px solid #0d6efd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Мои тренировки</h2>
+            <a href="/menu" class="btn btn-outline-secondary">Назад</a>
+        </div>
+
+        {% if active_workout %}
+        <div class="card mb-4 active-workout">
+            <div class="card-body">
+                <h5 class="card-title">Активная тренировка</h5>
+                <h6 class="card-subtitle mb-2 text-muted">
+                    {{ active_workout.date.strftime('%d.%m.%Y') }} - {{ active_workout.title }}
+                </h6>
+                <p class="card-text">
+                    {% if active_workout.note %}{{ active_workout.note }}{% endif %}
+                </p>
+                <div class="d-flex justify-content-between">
+                    <small class="text-muted">
+                        Начата в {{ active_workout.start_time.strftime('%H:%M') }}
+                    </small>
+                    <a href="/activetraining/{{ active_workout.id }}" class="btn btn-primary btn-sm">
+                        Продолжить
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <h4 class="mb-3">Завершенные тренировки</h4>
+
+        {% if not completed_workouts %}
+        <div class="alert alert-info">
+            У вас пока нет завершенных тренировок.
+        </div>
+        {% else %}
+        <div class="list-group">
+            {% for workout in completed_workouts %}
+            <div class="list-group-item workout-card">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">{{ workout.title }}</h5>
+                    <small>{{ workout.date.strftime('%d.%m.%Y') }}</small>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        {% if workout.note %}
+                        <p class="mb-1">{{ workout.note }}</p>
+                        {% endif %}
+                        <small>
+                            {% if workout.intensity %}
+                            Интенсивность: {{ workout.intensity }} |
+                            {% endif %}
+                            Длительность: {{ workout.duration_minutes }} мин
+                        </small>
+                    </div>
+                    <a href="/activetraining/{{ workout.id }}" class="btn btn-outline-primary btn-sm">
+                        Подробнее
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

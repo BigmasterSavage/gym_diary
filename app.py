@@ -113,7 +113,7 @@ def createtraining():
     if request.method == 'POST':
         user_id = session['user_id']
         date = request.form.get('date')
-        title = request.form.get('title')  # <-- новое поле
+        title = request.form.get('title')
         note = request.form.get('note', '')
         intensity = request.form.get('intensity') or None
 
@@ -296,76 +296,36 @@ def finish_training(workout_id):
     return jsonify({'status': 'ok'})
 
 
-
-@app.route('/stats', methods=['GET', 'POST'])
-def stats():
-    if 'username' not in session:
+@app.route('/mytraining')
+def my_training():
+    if 'user_id' not in session:
         return redirect(url_for('login'))
 
     user_id = session['user_id']
-    exercise_id = None
-    selected_workout_id = None
-    tonnage_data = None
-    progress_data = None
-    exercises_list = []
-    workouts_list = []
-
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=DictCursor) as cur:
-            cur.execute("SELECT id, name FROM exercises ORDER BY name")
-            exercises_list = cur.fetchall()
 
-            cur.execute("SELECT id, date, note FROM workouts WHERE user_id = %s ORDER BY date DESC", (user_id,))
-            workouts_list = cur.fetchall()
+            # Статка по активной тренировке
+            cur.execute("""
+                SELECT * FROM workouts
+                WHERE user_id = %s AND duration_minutes IS NULL
+                ORDER BY start_time DESC
+                LIMIT 1
+            """, (user_id,))
+            active_workout = cur.fetchone()
 
-            if request.method == 'POST':
-                exercise_id = request.form.get('exercise_id')
-                period = request.form.get('period')
-                selected_workout_id = request.form.get('workout_id')
+            # Статка по завершенным тренировкам
+            cur.execute("""
+                SELECT * FROM workouts
+                WHERE user_id = %s AND duration_minutes IS NOT NULL
+                ORDER BY date DESC, start_time DESC
+            """, (user_id,))
+            completed_workouts = cur.fetchall()
 
-                if not exercise_id:
-                    flash("Выберите упражнение")
-                else:
-                    if selected_workout_id:
-                        cur.execute("""
-                            SELECT w.date, e.name AS exercise_name,
-                                   SUM(s.weight_kg * s.reps) AS total_tonnage
-                            FROM sets s
-                            JOIN workouts w ON s.workout_id = w.id
-                            JOIN exercises e ON s.exercise_id = e.id
-                            WHERE s.exercise_id = %s AND s.workout_id = %s
-                            GROUP BY w.date, e.name
-                        """, (exercise_id, selected_workout_id))
-                        tonnage_data = cur.fetchone()
+    return render_template('my_trainings.html',
+                           active_workout = active_workout,
+                           completed_workouts = completed_workouts)
 
-                    query = """
-                        SELECT w.date, s.weight_kg, s.reps
-                        FROM sets s
-                        JOIN workouts w ON s.workout_id = w.id
-                        WHERE s.exercise_id = %s AND w.user_id = %s
-                    """
-
-                    if period == 'week':
-                        query += " AND w.date >= CURRENT_DATE - INTERVAL '7 days'"
-                    elif period == 'month':
-                        query += " AND w.date >= CURRENT_DATE - INTERVAL '30 days'"
-                    elif period == 'all':
-                        pass
-
-                    query += " ORDER BY w.date DESC"
-
-                    cur.execute(query, (exercise_id, user_id))
-                    progress_data = cur.fetchall()
-
-    return render_template(
-        'stats.html',
-        exercises=exercises_list,
-        workouts=workouts_list,
-        selected_exercise=exercise_id,
-        selected_workout=selected_workout_id,
-        tonnage=tonnage_data,
-        progress=progress_data
-    )
 
 @app.route('/logout')
 def logout():
