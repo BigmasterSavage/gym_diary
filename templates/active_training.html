@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Активная тренировка</title>
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"  rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
             background-color: #f8f9fa;
@@ -24,6 +24,24 @@
             font-size: 0.85rem;
             color: #6c757d;
         }
+        .set-block {
+            position: relative;
+        }
+        .set-required {
+            position: absolute;
+            top: -5px;
+            right: 0;
+            color: #dc3545;
+            font-size: 0.7rem;
+            display: none;
+        }
+        .invalid-set {
+            border-color: #dc3545 !important;
+        }
+        .btn-add-set.disabled {
+            pointer-events: none;
+            opacity: 0.65;
+        }
     </style>
 </head>
 <body>
@@ -34,7 +52,7 @@
     <p class="text-center text-muted">Продолжительность: <span id="timer">{{ workout.duration_minutes }} мин</span></p>
     <hr>
 
-    <form method="POST" action="{{ url_for('active_training', workout_id=workout.id) }}">
+    <form method="POST" action="{{ url_for('active_training', workout_id=workout.id) }}" id="trainingForm">
         <div class="row g-4">
 
             <!-- Левая колонка -->
@@ -42,7 +60,7 @@
                 <div class="card shadow-sm p-3 mb-4">
                     <h5 class="mb-3">Добавить упражнение</h5>
                     <label for="exerciseSelect" class="form-label">Выберите упражнение:</label>
-                    <select class="form-select mb-2" id="exerciseSelect" name="exercise_id">
+                    <select class="form-select mb-2" id="exerciseSelect" name="exercise_id" required>
                         <option value="">Выберите упражнение</option>
                         {% for ex in exercises %}
                             <option value="{{ ex.id }}">{{ ex.name }}</option>
@@ -61,29 +79,44 @@
             <!-- Правая колонка -->
             <div class="col-12 col-md-8">
                 {% for ex_id, sets in grouped_sets.items() %}
-                    <div class="card exercise-card shadow-sm mb-4 p-3">
+                    <div class="card exercise-card shadow-sm mb-4 p-3" data-exercise-id="{{ ex_id }}">
                         <h5 class="mb-3">{{ sets[0].name }}</h5>
                         {% for set in sets %}
-                            <div class="set-block mb-2">
+                            <div class="set-block mb-3">
                                 <label class="form-label mb-1">Подход {{ loop.index }}</label>
+                                <span class="set-required">Заполните все поля</span>
                                 <div class="row g-2">
                                     <div class="col-md-6">
-                                        <input type="number" step="0.1" class="form-control" name="weight_{{ set.id }}" value="{{ set.weight_kg or '' }}" placeholder="Вес (кг)">
+                                        <input type="number" step="0.1" class="form-control weight-input"
+                                               name="weight_{{ set.id }}" value="{{ set.weight_kg or '' }}"
+                                               placeholder="Вес (кг)" required>
                                     </div>
                                     <div class="col-md-5">
-                                        <input type="number" class="form-control" name="reps_{{ set.id }}" value="{{ set.reps or '' }}" placeholder="Повторы">
+                                        <input type="number" class="form-control reps-input"
+                                               name="reps_{{ set.id }}" value="{{ set.reps or '' }}"
+                                               placeholder="Повторы" required>
                                     </div>
                                     <div class="col-md-1 d-flex align-items-center">
-                                        <button type="submit" name="action" value="delete_set_{{ set.id }}" class="btn btn-outline-danger btn-sm small-btn px-2 py-1">× Удалить</button>
+                                        <button type="submit" name="action" value="delete_set_{{ set.id }}"
+                                                class="btn btn-outline-danger btn-sm small-btn px-2 py-1">× Удалить</button>
                                     </div>
                                 </div>
                             </div>
                         {% endfor %}
 
                         <div class="mt-3 d-grid gap-2 d-md-flex">
-                            <button name="action" value="save_exercise_{{ ex_id }}" type="submit" class="btn btn-success">Сохранить</button>
-                            <button name="action" value="remove_exercise_{{ ex_id }}" type="submit" class="btn btn-outline-danger">Удалить упр.</button>
-                            <button name="action" value="add_set_{{ ex_id }}" type="submit" class="btn btn-secondary">Добавить подход</button>
+                            <button name="action" value="save_exercise_{{ ex_id }}" type="submit" class="btn btn-success">
+                                Сохранить
+                            </button>
+                            <button name="action" value="remove_exercise_{{ ex_id }}" type="submit"
+                                    class="btn btn-outline-danger">
+                                Удалить упр.
+                            </button>
+                            <button name="action" value="add_set_{{ ex_id }}" type="button"
+                                    class="btn btn-secondary btn-add-set {% if not sets[-1].weight_kg or not sets[-1].reps %}disabled{% endif %}"
+                                    data-exercise-id="{{ ex_id }}">
+                                Добавить подход
+                            </button>
                         </div>
                     </div>
                 {% else %}
@@ -101,6 +134,7 @@
 </div>
 
 <script>
+    // Таймер тренировки
     const workoutStart = new Date("{{ workout.start_time.isoformat() }}");
     function updateTimer() {
         const now = new Date();
@@ -110,9 +144,78 @@
     }
     updateTimer();
     setInterval(updateTimer, 60000);
+
+    // Валидация подходов
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('trainingForm');
+
+        // Проверка заполненности всех подходов упражнения
+        function checkExerciseSetsComplete(exerciseId) {
+            const exerciseCard = document.querySelector(`.exercise-card[data-exercise-id="${exerciseId}"]`);
+            if (!exerciseCard) return false;
+
+            const weightInputs = exerciseCard.querySelectorAll('.weight-input');
+            const repsInputs = exerciseCard.querySelectorAll('.reps-input');
+
+            for (let i = 0; i < weightInputs.length; i++) {
+                if (!weightInputs[i].value || !repsInputs[i].value) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Обновление состояния кнопки "Добавить подход"
+        function updateAddSetButtons() {
+            document.querySelectorAll('.btn-add-set').forEach(btn => {
+                const exerciseId = btn.dataset.exerciseId;
+                btn.disabled = !checkExerciseSetsComplete(exerciseId);
+
+                if (btn.disabled) {
+                    btn.classList.add('disabled');
+                } else {
+                    btn.classList.remove('disabled');
+                }
+            });
+        }
+
+        // Обработчик изменения полей ввода
+        form.addEventListener('input', function(e) {
+            if (e.target.classList.contains('weight-input') || e.target.classList.contains('reps-input')) {
+                const setBlock = e.target.closest('.set-block');
+                const weightInput = setBlock.querySelector('.weight-input');
+                const repsInput = setBlock.querySelector('.reps-input');
+
+                if (!weightInput.value || !repsInput.value) {
+                    setBlock.querySelector('.set-required').style.display = 'block';
+                    weightInput.classList.add('invalid-set');
+                    repsInput.classList.add('invalid-set');
+                } else {
+                    setBlock.querySelector('.set-required').style.display = 'none';
+                    weightInput.classList.remove('invalid-set');
+                    repsInput.classList.remove('invalid-set');
+                }
+
+                updateAddSetButtons();
+            }
+        });
+
+        // Обработчик клика на "Добавить подход"
+        document.querySelectorAll('.btn-add-set').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (!this.disabled) {
+                    this.setAttribute('type', 'submit');
+                    this.click();
+                }
+            });
+        });
+
+        // Инициализация состояния кнопок при загрузке
+        updateAddSetButtons();
+    });
 </script>
 
-<!-- Bootstrap JS (опционально) -->
+<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
