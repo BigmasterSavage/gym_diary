@@ -296,7 +296,7 @@ def finish_training(workout_id):
     return jsonify({'status': 'ok'})
 
 
-@app.route('/my_trainings')
+@app.route('/mytrainings')
 def my_training():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -322,7 +322,7 @@ def my_training():
             """, (user_id,))
             completed_workouts = cur.fetchall()
 
-    return render_template('my_trainings.html',
+    return render_template('mytrainings.html',
                            active_workout = active_workout,
                            completed_workouts = completed_workouts)
 
