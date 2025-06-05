@@ -345,7 +345,7 @@ def workout_stats(workout_id):
                 flash("Тренировка не найдена")
                 return redirect(url_for('my_training'))
 
-            # Получаем все упражнения и подходы
+            # Получаем упражнения и подходы с двойной сортировкой
             cur.execute("""
                 SELECT 
                     e.id AS exercise_id,
@@ -358,7 +358,7 @@ def workout_stats(workout_id):
                 FROM sets s
                 JOIN exercises e ON s.exercise_id = e.id
                 WHERE s.workout_id = %s
-                ORDER BY s.order_num
+                ORDER BY s.order_num, s.id
             """, (workout_id,))
             sets = cur.fetchall()
 
@@ -380,7 +380,8 @@ def workout_stats(workout_id):
                     'weight': s['weight_kg'],
                     'reps': s['reps'],
                     'tonnage': s['tonnage'],
-                    'order_num': s['order_num']
+                    'order_num': s['order_num'],
+                    'set_id': s['set_id']
                 })
                 exercises[s['exercise_id']]['total_tonnage'] += s['tonnage'] or 0
                 total_tonnage += s['tonnage'] or 0
@@ -390,7 +391,6 @@ def workout_stats(workout_id):
                            exercises=exercises,
                            exercise_order=exercise_order,
                            total_tonnage=total_tonnage)
-
 
 
 @app.route('/logout')

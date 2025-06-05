@@ -85,9 +85,9 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for set in exercise.sets|sort(attribute='order_num') %}
+                                {% for set in exercise.sets %}
                                 <tr class="set-row">
-                                    <td>{{ loop.index }}</td>
+                                    <td>{{ set.order_num }}</td>  <!-- Показываем исходный номер подхода -->
                                     <td>{{ "%.1f"|format(set.weight) if set.weight is not none else '-' }}</td>
                                     <td>{{ set.reps if set.reps is not none else '-' }}</td>
                                     <td>{{ "%.1f"|format(set.tonnage) if set.tonnage is not none else '-' }}</td>
