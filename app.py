@@ -326,6 +326,39 @@ def my_training():
                            completed_workouts = completed_workouts)
 
 
+@app.route('/delete_workout/<int:workout_id>', method='POST')
+def delete_workout(workout_id):
+    if 'user_id' not in session:
+        flash("Необходимо авторизоваться")
+        return redirect(url_for('login'))
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            try:
+                cur.execute("SELECT user_id FROM workouts WHERE id = %s", (workout_id,))
+                result = cur.fetchone()
+
+                if not result:
+                    flash("Тренировка не найдена")
+                    return redirect(url_for('my_training'))
+
+                if result[0] != session['user_id']:
+                    flash("Нельзя удалить чужую тренировку")
+                    return redirect(url_for('my_training'))
+
+                # Удаляем сначала подходы (из-за внешнего ключа)
+                cur.execute("DELETE FROM sets WHERE workout_id = %s", (workout_id,))
+                # Затем удаляем саму тренировку
+                cur.execute("DELETE FROM workouts WHERE id = %s", (workout_id,))
+                conn.commit()
+
+                flash("Тренировка успешно удалена", "success")
+            except Exception as e:
+                conn.rollback()
+                flash(f"Ошибка при удалении тренировки: {str(e)}", "error")
+    return redirect(url_for('my_training'))
+
+
 @app.route('/workout_stats/<int:workout_id>')
 def workout_stats(workout_id):
     if 'user_id' not in session:

@@ -39,9 +39,16 @@
                     <small class="text-muted">
                         Начата в {{ active_workout.start_time.strftime('%H:%M') }}
                     </small>
-                    <a href="/activetraining/{{ active_workout.id }}" class="btn btn-primary btn-sm">
-                        Продолжить
-                    </a>
+                    <div>
+                        <a href="/activetraining/{{ active_workout.id }}" class="btn btn-primary btn-sm me-2">
+                            Продолжить
+                        </a>
+                        <form action="/delete_workout/{{ active_workout.id }}" method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Вы уверены, что хотите удалить эту тренировку?')">
+                                Удалить
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -73,9 +80,16 @@
                             Длительность: {{ workout.duration_minutes }} мин
                         </small>
                     </div>
-                    <a href="/workout_stats/{{ workout.id }}" class="btn btn-outline-primary btn-sm">
-                        Подробнее
-                    </a>
+                    <div>
+                        <a href="/workout_stats/{{ workout.id }}" class="btn btn-outline-primary btn-sm me-2">
+                            Подробнее
+                        </a>
+                        <form action="/delete_workout/{{ workout.id }}" method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Вы уверены, что хотите удалить эту тренировку?')">
+                                Удалить
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
             {% endfor %}
