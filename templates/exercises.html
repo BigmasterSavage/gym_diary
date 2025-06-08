@@ -22,7 +22,10 @@
 
 <div class="container py-4">
 
-    <h2 class="text-center mb-4">Упражнения</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-center mb-0">Упражнения</h2>
+        <a href="/menu" class="btn btn-outline-secondary">Назад</a>
+    </div>
 
     {% with messages = get_flashed_messages() %}
       {% if messages %}
