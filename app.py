@@ -138,114 +138,19 @@ def createtraining():
     return render_template('createtraining.html')
 
 
-@app.route('/activetraining/<int:workout_id>', methods=['GET', 'POST'])
+@app.route('/activetraining/<int:workout_id>', methods=['GET'])
 def active_training(workout_id):
-    print("Request method:", request.method)
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=DictCursor) as cur:
-
             # Получаем тренировку
             cur.execute("SELECT * FROM workouts WHERE id = %s", (workout_id,))
             workout = cur.fetchone()
             if not workout:
                 flash("Тренировка не найдена")
                 return redirect(url_for('menu'))
-
-            # Обработка POST-запроса
-            if request.method == 'POST':
-                action = request.form.get('action')
-
-                # Добавление упражнения
-                if action == 'add_exercise':
-                    ex_id = request.form.get('exercise_id')
-                    if ex_id:
-                        cur.execute("""
-                            SELECT COALESCE(MAX(order_num), 0) FROM sets WHERE workout_id = %s
-                        """, (workout_id,))
-                        max_order = cur.fetchone()[0]
-                        # Добавляем только один подход вместо трёх
-                        cur.execute("""
-                            INSERT INTO sets (workout_id, exercise_id, order_num)
-                            VALUES (%s, %s, %s)
-                        """, (workout_id, ex_id, max_order + 1))
-                        conn.commit()
-                        return redirect(url_for('active_training', workout_id=workout_id))
-
-                # Добавление подхода
-                elif action.startswith('add_set_'):
-                    try:
-                        # Проверяем, что после add_set_ следует число
-                        parts = action.split('_')
-                        if len(parts) < 3 or not parts[2].isdigit():
-                            raise ValueError("Неверный формат команды")
-
-                        ex_id = int(parts[2])
-
-                        cur.execute("SELECT COALESCE(MAX(order_num), 0) FROM sets WHERE workout_id = %s", (workout_id,))
-                        max_order = cur.fetchone()[0]
-                        cur.execute("""
-                            INSERT INTO sets (workout_id, exercise_id, order_num)
-                            VALUES (%s, %s, %s)
-                        """, (workout_id, ex_id, max_order + 1))
-                        conn.commit()
-                        return redirect(url_for('active_training', workout_id=workout_id))
-                    except Exception as e:
-                        print("Ошибка при добавлении подхода:", str(e))
-                        flash("Не удалось добавить подход")
-                        conn.rollback()
-                        return redirect(url_for('active_training', workout_id=workout_id))
-                        
-                # Удаление одного подхода по set_id
-                elif action.startswith('delete_set_'):
-                    try:
-                        set_id = int(action.split('_')[2])  # delete_set_123 → 123
-                        cur.execute("DELETE FROM sets WHERE id = %s AND workout_id = %s",
-                                    (set_id, workout_id))
-                        conn.commit()
-                        return redirect(url_for('active_training', workout_id=workout_id))
-                    except (ValueError, IndexError):
-                        flash("Неверный формат запроса на удаление подхода")
-                        
-                # Сохранение данных подходов для одного упражнения
-                elif action.startswith('save_exercise_'):
-                    ex_id = action.split('_')[-1]
-                    cur.execute("""
-                        SELECT id FROM sets
-                        WHERE workout_id = %s AND exercise_id = %s
-                        ORDER BY id
-                    """, (workout_id, ex_id))
-                    sets = cur.fetchall()
-
-                    for s in sets:
-                        weight = request.form.get(f'weight_{s["id"]}') or None
-                        reps = request.form.get(f'reps_{s["id"]}') or None
-                        cur.execute("""
-                            UPDATE sets SET weight_kg = %s, reps = %s
-                            WHERE id = %s
-                        """, (weight, reps, s["id"]))
-                    conn.commit()
-                    return redirect(url_for('active_training', workout_id=workout_id))
-
-                # Удаление всех подходов по упражнению
-                elif action.startswith('remove_exercise_'):
-                    ex_id = action.split('_')[-1]
-                    cur.execute("DELETE FROM sets WHERE workout_id = %s AND exercise_id = %s",
-                                (workout_id, ex_id))
-                    conn.commit()
-                    return redirect(url_for('active_training', workout_id=workout_id))
-                
-                # Завершение тренировки
-                elif action == 'finish':
-                    now = datetime.now()
-                    duration = max(0, (now - workout['start_time']).total_seconds() // 60 - 600)
-                    cur.execute("""
-                        UPDATE workouts SET duration_minutes = %s WHERE id = %s
-                    """, (duration, workout_id))
-                    conn.commit()
-                    return redirect(url_for('menu'))
 
             # Получаем список всех доступных упражнений
             cur.execute("SELECT id, name FROM exercises ORDER BY name")
@@ -267,32 +172,167 @@ def active_training(workout_id):
                 grouped_sets.setdefault(s['exercise_id'], []).append(s)
 
     return render_template('active_training.html',
-                           workout=workout,
-                           exercises=exercises,
-                           grouped_sets=grouped_sets)
-    
+                         workout=workout,
+                         exercises=exercises,
+                         grouped_sets=grouped_sets)
 
-@app.route('/finish/<int:workout_id>', methods=['POST'])
-def finish_training(workout_id):
+
+# AJAX endpoint для добавления упражнения
+@app.route('/activetraining/<int:workout_id>/add_exercise', methods=['POST'])
+def add_exercise_ajax(workout_id):
     if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    ex_id = data.get('exercise_id')
+
+    with get_db_connection() as conn:
+        with conn.cursor(cursor_factory=DictCursor) as cur:
+            # Получаем название упражнения
+            cur.execute("SELECT name FROM exercises WHERE id = %s", (ex_id,))
+            exercise = cur.fetchone()
+            if not exercise:
+                return jsonify({'error': 'Exercise not found'}), 404
+
+            # Добавляем подход
+            cur.execute("SELECT COALESCE(MAX(order_num), 0) FROM sets WHERE workout_id = %s", (workout_id,))
+            max_order = cur.fetchone()[0]
+
+            cur.execute("""
+                INSERT INTO sets (workout_id, exercise_id, order_num)
+                VALUES (%s, %s, %s)
+                RETURNING id
+            """, (workout_id, ex_id, max_order + 1))
+            set_id = cur.fetchone()['id']
+
+            conn.commit()
+
+    return jsonify({
+        'success': True,
+        'exercise_id': ex_id,
+        'exercise_name': exercise['name'],
+        'set_id': set_id
+    })
+
+
+# AJAX endpoint для добавления подхода
+@app.route('/activetraining/<int:workout_id>/add_set', methods=['POST'])
+def add_set_ajax(workout_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    ex_id = data.get('exercise_id')
+
+    with get_db_connection() as conn:
+        with conn.cursor(cursor_factory=DictCursor) as cur:
+            # Получаем текущее количество подходов для этого упражнения
+            cur.execute("""
+                SELECT COUNT(*) as cnt FROM sets
+                WHERE workout_id = %s AND exercise_id = %s
+            """, (workout_id, ex_id))
+            set_count = cur.fetchone()['cnt'] + 1
+
+            # Добавляем новый подход
+            cur.execute("SELECT COALESCE(MAX(order_num), 0) FROM sets WHERE workout_id = %s", (workout_id,))
+            max_order = cur.fetchone()[0]
+
+            cur.execute("""
+                INSERT INTO sets (workout_id, exercise_id, order_num)
+                VALUES (%s, %s, %s)
+                RETURNING id
+            """, (workout_id, ex_id, max_order + 1))
+            set_id = cur.fetchone()['id']
+
+            conn.commit()
+
+    return jsonify({
+        'success': True,
+        'set_id': set_id,
+        'set_number': set_count
+    })
+
+
+# AJAX endpoint для удаления подхода
+@app.route('/activetraining/<int:workout_id>/delete_set', methods=['POST'])
+def delete_set_ajax(workout_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    set_id = data.get('set_id')
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM sets WHERE id = %s AND workout_id = %s", (set_id, workout_id))
+            conn.commit()
+
+    return jsonify({'success': True})
+
+
+# AJAX endpoint для удаления упражнения
+@app.route('/activetraining/<int:workout_id>/remove_exercise', methods=['POST'])
+def remove_exercise_ajax(workout_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    ex_id = data.get('exercise_id')
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM sets WHERE workout_id = %s AND exercise_id = %s", (workout_id, ex_id))
+            conn.commit()
+
+    return jsonify({'success': True})
+
+
+# AJAX endpoint для сохранения упражнения
+@app.route('/activetraining/<int:workout_id>/save_exercise', methods=['POST'])
+def save_exercise_ajax(workout_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    ex_id = data.get('exercise_id')
+    sets_data = data.get('sets', [])
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            for set_data in sets_data:
+                weight = float(set_data['weight']) if set_data['weight'] else None
+                reps = int(set_data['reps']) if set_data['reps'] else None
+
+                cur.execute("""
+                    UPDATE sets SET weight_kg = %s, reps = %s
+                    WHERE id = %s AND workout_id = %s
+                """, (weight, reps, set_data['set_id'], workout_id))
+
+            conn.commit()
+
+    return jsonify({'success': True})
+
+
+# AJAX endpoint для завершения тренировки
+@app.route('/activetraining/<int:workout_id>/finish', methods=['POST'])
+def finish_workout_ajax(workout_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
 
     data = request.get_json()
     duration = data.get('duration')
 
-    if duration is None or not isinstance(duration, int):
-        return jsonify({'error': 'Invalid duration'}), 400
-
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                UPDATE workouts
-                SET duration_minutes = %s
+                UPDATE workouts SET duration_minutes = %s
                 WHERE id = %s AND user_id = %s
             """, (duration, workout_id, session['user_id']))
             conn.commit()
 
-    return jsonify({'status': 'ok'})
+    return jsonify({'success': True})
+
+
 
 
 @app.route('/mytrainings')
