@@ -326,7 +326,7 @@ def my_training():
                            completed_workouts = completed_workouts)
 
 
-@app.route('/delete_workout/<int:workout_id>', method='POST')
+@app.route('/delete_workout/<int:workout_id>', methods=['POST'])
 def delete_workout(workout_id):
     if 'user_id' not in session:
         flash("Необходимо авторизоваться")
@@ -335,6 +335,7 @@ def delete_workout(workout_id):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             try:
+                # Сначала проверяем, что тренировка принадлежит пользователю
                 cur.execute("SELECT user_id FROM workouts WHERE id = %s", (workout_id,))
                 result = cur.fetchone()
 
@@ -356,6 +357,7 @@ def delete_workout(workout_id):
             except Exception as e:
                 conn.rollback()
                 flash(f"Ошибка при удалении тренировки: {str(e)}", "error")
+
     return redirect(url_for('my_training'))
 
 
