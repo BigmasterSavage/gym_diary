@@ -379,7 +379,6 @@ def workout_stats(workout_id):
                 flash("Тренировка не найдена")
                 return redirect(url_for('my_training'))
 
-            # Получаем упражнения и подходы с сортировкой по ID подхода
             cur.execute("""
                 SELECT 
                     e.id AS exercise_id,
@@ -391,9 +390,10 @@ def workout_stats(workout_id):
                     s.order_num
                 FROM sets s
                 JOIN exercises e ON s.exercise_id = e.id
-                WHERE s.workout_id = %s
-                ORDER BY e.id, s.id  -- Ключевое изменение здесь
-            """, (workout_id,))
+                JOIN workouts w ON s.workout_id = w.id
+                WHERE s.workout_id = %s AND w.user_id = %s
+                ORDER BY s.order_num, s.id
+            """, (workout_id, session['user_id']))
             sets = cur.fetchall()
 
             # Группируем по упражнениям
@@ -410,7 +410,6 @@ def workout_stats(workout_id):
                     }
                     exercise_order.append(s['exercise_id'])
 
-                # Добавляем подходы в порядке их ID
                 exercises[s['exercise_id']]['sets'].append({
                     'weight': s['weight_kg'],
                     'reps': s['reps'],
