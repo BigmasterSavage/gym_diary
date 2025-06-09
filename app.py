@@ -117,13 +117,19 @@ def exercises():
 
         if action == 'add':
             name = request.form.get('name')
-            description = request.form.get('description', '')
+            muscle_group = request.form.get('muscle_group') or None
+            equipment_type = request.form.get('equipment_type') or None
+            is_basic = 'is_basic' in request.form
+            is_compound = 'is_compound' in request.form
+
             if name:
                 with get_db_connection() as conn:
                     with conn.cursor() as cur:
                         cur.execute(
-                            "INSERT INTO exercises (name, description) VALUES (%s, %s)",
-                            (name, description)
+                            """INSERT INTO exercises 
+                            (name, muscle_group, equipment_type, is_basic, is_compound) 
+                            VALUES (%s, %s, %s, %s, %s)""",
+                            (name, muscle_group, equipment_type, is_basic, is_compound)
                         )
                         conn.commit()
                 flash("Упражнение добавлено")
@@ -135,16 +141,47 @@ def exercises():
             if exercise_id:
                 with get_db_connection() as conn:
                     with conn.cursor() as cur:
-                        cur.execute("DELETE FROM exercises WHERE id = %s", (exercise_id,))
-                        conn.commit()
-                flash("Упражнение удалено")
+                        # Проверяем, используется ли упражнение в подходах
+                        cur.execute("SELECT COUNT(*) FROM sets WHERE exercise_id = %s", (exercise_id,))
+                        count = cur.fetchone()[0]
+
+                        if count > 0:
+                            flash("Нельзя удалить упражнение, так как оно используется в тренировках")
+                        else:
+                            cur.execute("DELETE FROM exercises WHERE id = %s", (exercise_id,))
+                            conn.commit()
+                            flash("Упражнение удалено")
 
         return redirect(url_for('exercises'))
 
     # GET: отображаем список упражнений
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=DictCursor) as cur:
-            cur.execute("SELECT * FROM exercises ORDER BY name")
+            # Добавляем параметры фильтрации из GET-запроса
+            muscle_group = request.args.get('muscle_group')
+            equipment_type = request.args.get('equipment_type')
+            is_basic = request.args.get('is_basic')
+            is_compound = request.args.get('is_compound')
+
+            query = "SELECT * FROM exercises WHERE TRUE"
+            params = []
+
+            if muscle_group:
+                query += " AND muscle_group = %s"
+                params.append(muscle_group)
+
+            if equipment_type:
+                query += " AND equipment_type = %s"
+                params.append(equipment_type)
+
+            if is_basic:
+                query += " AND is_basic = TRUE"
+
+            if is_compound:
+                query += " AND is_compound = TRUE"
+
+            query += " ORDER BY name"
+            cur.execute(query, params)
             exercises_list = cur.fetchall()
 
     return render_template('exercises.html', exercises=exercises_list)
