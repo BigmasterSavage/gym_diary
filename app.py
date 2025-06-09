@@ -157,12 +157,13 @@ def exercises():
     # GET: отображаем список упражнений
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=DictCursor) as cur:
-            # Добавляем параметры фильтрации из GET-запроса
+            # Получаем параметры фильтрации
             muscle_group = request.args.get('muscle_group')
             equipment_type = request.args.get('equipment_type')
-            is_basic = request.args.get('is_basic')
-            is_compound = request.args.get('is_compound')
+            is_basic = request.args.get('is_basic') == 'on'
+            is_compound = request.args.get('is_compound') == 'on'
 
+            # Формируем запрос с учетом фильтров
             query = "SELECT * FROM exercises WHERE TRUE"
             params = []
 
