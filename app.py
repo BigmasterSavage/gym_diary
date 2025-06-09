@@ -56,11 +56,24 @@ def login():
 
     return render_template('login.html')
 
+
 @app.route('/menu')
 def menu():
     if 'username' not in session:
         return redirect(url_for('login'))
-    return render_template('menu.html')
+
+    # Проверяем есть ли активная тренировка
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id FROM workouts 
+                WHERE user_id = %s AND duration_minutes IS NULL
+                LIMIT 1
+            """, (session['user_id'],))
+            active_workout = cur.fetchone()
+
+    return render_template('menu.html', active_workout=bool(active_workout))
+
 
 @app.route('/exercises', methods=['GET', 'POST'])
 def exercises():
@@ -109,6 +122,20 @@ def exercises():
 def createtraining():
     if 'username' not in session:
         return redirect(url_for('login'))
+
+    # Проверяем есть ли активная тренировка
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id FROM workouts 
+                WHERE user_id = %s AND duration_minutes IS NULL
+                LIMIT 1
+            """, (session['user_id'],))
+            active_workout = cur.fetchone()
+
+    if active_workout:
+        flash("У вас уже есть активная тренировка. Завершите её перед созданием новой.")
+        return redirect(url_for('active_training', workout_id=active_workout[0]))
 
     if request.method == 'POST':
         user_id = session['user_id']

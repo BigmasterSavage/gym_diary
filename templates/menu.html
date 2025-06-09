@@ -16,6 +16,10 @@
         .menu-card:hover {
             transform: translateY(-5px);
         }
+        .disabled-btn {
+            pointer-events: none;
+            opacity: 0.65;
+        }
     </style>
 </head>
 <body>
@@ -23,13 +27,26 @@
 <div class="container-fluid p-4">
     <div class="text-center mb-4">
         <h2 class="mb-4">Привет, {{ session.username }}!</h2>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-warning">
+                    {{ messages[0] }}
+                </div>
+            {% endif %}
+        {% endwith %}
     </div>
 
     <div class="row justify-content-center">
         <div class="col-12 col-sm-8 col-md-6 mb-3">
             <div class="card menu-card shadow-sm">
                 <div class="card-body text-center">
-                    <p class="my-3"><a href="/createtraining" class="btn btn-primary w-100">Создать тренировку</a></p>
+                    <p class="my-3">
+                        <a href="/createtraining"
+                           class="btn btn-primary w-100 {% if active_workout %}disabled-btn{% endif %}"
+                           {% if active_workout %}title="Завершите текущую тренировку перед созданием новой"{% endif %}>
+                            Создать тренировку
+                        </a>
+                    </p>
                     <p class="my-3"><a href="/mytrainings" class="btn btn-outline-primary w-100">Мои тренировки</a></p>
                     <p class="my-3"><a href="/exercises" class="btn btn-outline-secondary w-100">Упражнения</a></p>
                 </div>
