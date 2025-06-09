@@ -57,6 +57,13 @@
             font-size: 0.8rem;
             margin-left: 10px;
         }
+        .execution-badge {
+            font-size: 0.75rem;
+            margin-left: 8px;
+        }
+        .execution-select {
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -79,6 +86,18 @@
                         <option value="{{ ex.id }}">{{ ex.name }}</option>
                     {% endfor %}
                 </select>
+
+                <label for="executionTypeSelect" class="form-label">Тип выполнения:</label>
+                <select class="form-select execution-select" id="executionTypeSelect">
+                    <option value="классика">Классика</option>
+                    <option value="дроп-сет">Дроп-сет</option>
+                    <option value="суперсет">Суперсет</option>
+                    <option value="трисет">Трисет</option>
+                    <option value="статика">Статика</option>
+                    <option value="пирамида">Пирамида</option>
+                    <option value="полупирамида">Полупирамида</option>
+                </select>
+
                 <div class="exercise-select-error mb-2">Выберите один из пунктов списка.</div>
                 <button type="button" class="btn btn-primary w-100 mb-3" id="addExerciseBtn">Добавить</button>
 
@@ -94,7 +113,10 @@
         <div class="col-12 col-md-8" id="exercisesContainer">
             {% for ex_id, sets in grouped_sets.items() %}
                 <div class="card exercise-card shadow-sm mb-4 p-3" data-exercise-id="{{ ex_id }}">
-                    <h5 class="mb-3">{{ sets[0].name }}</h5>
+                    <h5 class="mb-3">
+                        {{ sets[0].name }}
+                        <span class="badge bg-secondary execution-badge">{{ sets[0].execution_type or 'классика' }}</span>
+                    </h5>
                     {% for set in sets %}
                         <div class="set-block mb-3" data-set-id="{{ set.id }}">
                             <label class="form-label mb-1">Подход {{ loop.index }}</label>
@@ -160,6 +182,7 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         const exerciseSelect = document.getElementById('exerciseSelect');
+        const executionTypeSelect = document.getElementById('executionTypeSelect');
         const addExerciseBtn = document.getElementById('addExerciseBtn');
         const exerciseSelectError = document.querySelector('.exercise-select-error');
         const exercisesContainer = document.getElementById('exercisesContainer');
@@ -183,7 +206,8 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        exercise_id: exerciseSelect.value
+                        exercise_id: exerciseSelect.value,
+                        execution_type: executionTypeSelect.value
                     })
                 });
 
@@ -193,7 +217,9 @@
                     // Добавляем новое упражнение в DOM
                     const newExerciseHtml = `
                         <div class="card exercise-card shadow-sm mb-4 p-3" data-exercise-id="${data.exercise_id}">
-                            <h5 class="mb-3">${data.exercise_name}</h5>
+                            <h5 class="mb-3">${data.exercise_name}
+                                <span class="badge bg-secondary execution-badge">${data.execution_type || 'классика'}</span>
+                            </h5>
                             <div class="set-block mb-3" data-set-id="${data.set_id}">
                                 <label class="form-label mb-1">Подход 1</label>
                                 <span class="set-required">Заполните все поля</span>
@@ -253,6 +279,7 @@
             if (e.target.classList.contains('btn-add-set') && !e.target.disabled) {
                 const exerciseId = e.target.dataset.exerciseId;
                 const exerciseCard = e.target.closest('.exercise-card');
+                const executionType = exerciseCard.querySelector('.execution-badge').textContent.trim();
 
                 try {
                     const response = await fetch(`/activetraining/${workout_id}/add_set`, {
@@ -261,7 +288,8 @@
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            exercise_id: exerciseId
+                            exercise_id: exerciseId,
+                            execution_type: executionType
                         })
                     });
 

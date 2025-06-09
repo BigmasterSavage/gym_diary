@@ -48,9 +48,11 @@ CREATE TABLE IF NOT EXISTS sets (
     order_num INTEGER,
     weight_kg NUMERIC(5,2),
     reps INTEGER,
-    note TEXT
+    note TEXT,
+    execution_type VARCHAR(20)
+        CHECK (execution_type IN ('классика', 'дроп-сет', 'суперсет', 'трисет', 'статика', 'пирамида', 'полупирамида'))
+        DEFAULT 'классика'
 );
-
 
 -- Добавление пользователя 'admin' при инициализации
 INSERT INTO users (username)

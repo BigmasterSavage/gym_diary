@@ -282,6 +282,7 @@ def add_exercise_ajax(workout_id):
 
     data = request.get_json()
     ex_id = data.get('exercise_id')
+    execution_type = data.get('execution_type', 'классика')  # Получаем тип выполнения
 
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=DictCursor) as cur:
@@ -291,15 +292,15 @@ def add_exercise_ajax(workout_id):
             if not exercise:
                 return jsonify({'error': 'Exercise not found'}), 404
 
-            # Добавляем подход
+            # Добавляем подход с указанием типа выполнения
             cur.execute("SELECT COALESCE(MAX(order_num), 0) FROM sets WHERE workout_id = %s", (workout_id,))
             max_order = cur.fetchone()[0]
 
             cur.execute("""
-                INSERT INTO sets (workout_id, exercise_id, order_num)
-                VALUES (%s, %s, %s)
+                INSERT INTO sets (workout_id, exercise_id, order_num, execution_type)
+                VALUES (%s, %s, %s, %s)
                 RETURNING id
-            """, (workout_id, ex_id, max_order + 1))
+            """, (workout_id, ex_id, max_order + 1, execution_type))
             set_id = cur.fetchone()['id']
 
             conn.commit()
@@ -308,7 +309,8 @@ def add_exercise_ajax(workout_id):
         'success': True,
         'exercise_id': ex_id,
         'exercise_name': exercise['name'],
-        'set_id': set_id
+        'set_id': set_id,
+        'execution_type': execution_type
     })
 
 
