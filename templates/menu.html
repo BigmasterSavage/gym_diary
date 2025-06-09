@@ -26,7 +26,10 @@
 
 <div class="container-fluid p-4">
     <div class="text-center mb-4">
-        <h2 class="mb-4">Привет, {{ session.username }}!</h2>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Привет, {{ session.username }}!</h2>
+            <a href="/profile" class="btn btn-outline-secondary">Мои данные</a>
+        </div>
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 <div class="alert alert-warning">
@@ -59,7 +62,7 @@
     </div>
 </div>
 
-<!-- Bootstrap JS (опционально) -->
+<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

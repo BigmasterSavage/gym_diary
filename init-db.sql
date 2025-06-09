@@ -2,7 +2,15 @@
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    gender VARCHAR(10)
+        CHECK (gender IN ('мужской', 'женский') OR gender IS NULL),
+    age INTEGER
+        CHECK (age > 0 OR age IS NULL),
+    weight_kg NUMERIC(5,2)
+        CHECK (weight_kg > 0 OR weight_kg IS NULL),
+    height_cm INTEGER
+        CHECK (height_cm > 0 OR height_cm IS NULL)
 );
 
 -- Таблица тренировок

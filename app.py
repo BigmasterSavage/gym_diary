@@ -75,6 +75,38 @@ def menu():
     return render_template('menu.html', active_workout=bool(active_workout))
 
 
+@app.route('/profile', methods=['GET', 'POST'])
+def profile():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        gender = request.form.get('gender')
+        age = request.form.get('age')
+        weight = request.form.get('weight')
+        height = request.form.get('height')
+
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE users 
+                    SET gender = %s, age = %s, weight_kg = %s, height_cm = %s
+                    WHERE id = %s
+                """, (gender, age, weight, height, session['user_id']))
+                conn.commit()
+
+        flash("Данные успешно обновлены")
+        return redirect(url_for('profile'))
+
+    # GET запрос - отображаем текущие данные
+    with get_db_connection() as conn:
+        with conn.cursor(cursor_factory=DictCursor) as cur:
+            cur.execute("SELECT * FROM users WHERE id = %s", (session['user_id'],))
+            user_data = cur.fetchone()
+
+    return render_template('profile.html', user=user_data)
+
+
 @app.route('/exercises', methods=['GET', 'POST'])
 def exercises():
     if 'username' not in session:
