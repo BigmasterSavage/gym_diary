@@ -119,22 +119,46 @@ def exercises():
             name = request.form.get('name')
             muscle_group = request.form.get('muscle_group') or None
             equipment_type = request.form.get('equipment_type') or None
-            is_basic = 'is_basic' in request.form
-            is_compound = 'is_compound' in request.form
+            exercise_type = request.form.get('exercise_type')
+
+            is_basic = exercise_type == 'basic' if exercise_type else None
 
             if name:
                 with get_db_connection() as conn:
                     with conn.cursor() as cur:
                         cur.execute(
                             """INSERT INTO exercises 
-                            (name, muscle_group, equipment_type, is_basic, is_compound) 
-                            VALUES (%s, %s, %s, %s, %s)""",
-                            (name, muscle_group, equipment_type, is_basic, is_compound)
+                            (name, muscle_group, equipment_type, is_basic) 
+                            VALUES (%s, %s, %s, %s)""",
+                            (name, muscle_group, equipment_type, is_basic)
                         )
                         conn.commit()
                 flash("Упражнение добавлено")
             else:
                 flash("Название упражнения обязательно")
+
+        elif action == 'edit':
+            exercise_id = request.form.get('exercise_id')
+            name = request.form.get('name')
+            muscle_group = request.form.get('muscle_group') or None
+            equipment_type = request.form.get('equipment_type') or None
+            exercise_type = request.form.get('exercise_type')
+
+            is_basic = exercise_type == 'basic' if exercise_type else None
+
+            if name and exercise_id:
+                with get_db_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            """UPDATE exercises 
+                            SET name = %s, muscle_group = %s, equipment_type = %s, is_basic = %s
+                            WHERE id = %s""",
+                            (name, muscle_group, equipment_type, is_basic, exercise_id)
+                        )
+                        conn.commit()
+                flash("Упражнение обновлено")
+            else:
+                flash("Необходимо указать название упражнения")
 
         elif action == 'delete':
             exercise_id = request.form.get('exercise_id')
@@ -160,8 +184,7 @@ def exercises():
             # Получаем параметры фильтрации
             muscle_group = request.args.get('muscle_group')
             equipment_type = request.args.get('equipment_type')
-            is_basic = request.args.get('is_basic') == 'on'
-            is_compound = request.args.get('is_compound') == 'on'
+            exercise_type = request.args.get('exercise_type')
 
             # Формируем запрос с учетом фильтров
             query = "SELECT * FROM exercises WHERE TRUE"
@@ -175,11 +198,10 @@ def exercises():
                 query += " AND equipment_type = %s"
                 params.append(equipment_type)
 
-            if is_basic:
+            if exercise_type == 'basic':
                 query += " AND is_basic = TRUE"
-
-            if is_compound:
-                query += " AND is_compound = TRUE"
+            elif exercise_type == 'isolated':
+                query += " AND is_basic = FALSE"
 
             query += " ORDER BY name"
             cur.execute(query, params)

@@ -35,7 +35,6 @@ CREATE TABLE IF NOT EXISTS exercises (
     muscle_group VARCHAR(20)
         CHECK (muscle_group IN ('ноги', 'спина', 'грудные', 'дельты', 'трицепс', 'бицепс', 'кор') OR muscle_group IS NULL),
     is_basic BOOLEAN DEFAULT NULL,
-    is_compound BOOLEAN DEFAULT NULL,
     equipment_type VARCHAR(20)
         CHECK (equipment_type IN ('рычажный', 'блочный', 'свободный вес', 'свой вес') OR equipment_type IS NULL)
 );
