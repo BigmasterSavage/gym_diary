@@ -3,337 +3,568 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Упражнения</title>
+    <title>Активная тренировка</title>
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; }
-        .exercise-card { transition: transform 0.2s; }
-        .exercise-card:hover { transform: translateY(-2px); }
-        .badge-muscle { background-color: #6c757d; }
-        .badge-equipment { background-color: #17a2b8; }
-        .badge-basic { background-color: #198754; }
-        .badge-isolated { background-color: #6f42c1; }
-        .filter-active { background-color: #0d6efd; color: white; }
-        .dropdown-menu { padding: 0.5rem; }
-        .dropdown-item { border-radius: 0.25rem; }
+        body {
+            background-color: #f8f9fa;
+        }
+        .exercise-card {
+            transition: transform 0.2s;
+        }
+        .exercise-card:hover {
+            transform: translateY(-2px);
+        }
+        .small-btn {
+            font-size: 0.75rem;
+        }
+        #exercise-names div {
+            font-style: italic;
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        .set-block {
+            position: relative;
+        }
+        .set-required {
+            position: absolute;
+            top: -5px;
+            right: 0;
+            color: #dc3545;
+            font-size: 0.7rem;
+            display: none;
+        }
+        .invalid-set {
+            border-color: #dc3545 !important;
+        }
+        .btn-add-set.disabled {
+            pointer-events: none;
+            opacity: 0.65;
+        }
+        .add-exercise-block {
+            position: sticky;
+            top: 20px;
+        }
+        .exercise-select-error {
+            color: #dc3545;
+            font-size: 0.8rem;
+            display: none;
+        }
+        .saving-indicator {
+            display: none;
+            color: #6c757d;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+        .execution-badge {
+            font-size: 0.75rem;
+            margin-left: 8px;
+        }
+        .execution-select {
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
 
 <div class="container py-4">
-    <!-- Заголовок и кнопка назад -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="text-center mb-0">Упражнения</h2>
-        <a href="/menu" class="btn btn-outline-secondary">Назад</a>
-    </div>
 
-    <!-- Сообщения об ошибках -->
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <div class="alert alert-danger" role="alert">
-          <ul class="mb-0">
-          {% for message in messages %}
-            <li>{{ message }}</li>
-          {% endfor %}
-          </ul>
-        </div>
-      {% endif %}
-    {% endwith %}
-
-    <!-- Форма добавления/редактирования упражнения -->
-    <div class="card mb-4 shadow-sm p-3 exercise-card">
-        <h3 class="mb-3" id="form-title">Добавить упражнение</h3>
-        <form method="post" id="exercise-form">
-            <input type="hidden" name="action" value="add" id="form-action">
-            <input type="hidden" name="exercise_id" id="exercise-id">
-
-            <div class="mb-3">
-                <label class="form-label">Название:</label>
-                <input type="text" class="form-control" name="name" id="exercise-name" required>
-            </div>
-
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Группа мышц:</label>
-                    <select class="form-select" name="muscle_group" id="muscle-group">
-                        <option value="">-- Выберите --</option>
-                        <option value="ноги">Ноги</option>
-                        <option value="спина">Спина</option>
-                        <option value="грудные">Грудные</option>
-                        <option value="дельты">Дельты</option>
-                        <option value="трицепс">Трицепс</option>
-                        <option value="бицепс">Бицепс</option>
-                        <option value="кор">Кор</option>
-                    </select>
-                </div>
-
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Тип оборудования:</label>
-                    <select class="form-select" name="equipment_type" id="equipment-type">
-                        <option value="">-- Выберите --</option>
-                        <option value="свободный вес">Свободный вес</option>
-                        <option value="свой вес">Свой вес</option>
-                        <option value="рычажный">Рычажный тренажер</option>
-                        <option value="блочный">Блочный тренажер</option>
-                    </select>
-                </div>
-
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Тип упражнения:</label>
-                    <select class="form-select" name="exercise_type" id="exercise-type">
-                        <option value="">-- Выберите --</option>
-                        <option value="basic">Базовое</option>
-                        <option value="isolated">Изолированное</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary flex-grow-1" id="submit-btn">Добавить</button>
-                <button type="button" class="btn btn-outline-secondary" id="cancel-edit" style="display: none;">Отмена</button>
-            </div>
-        </form>
-    </div>
-
+    <h2 class="text-center mb-4">Тренировка: {{ workout.date }} — {{ workout.title }}</h2>
+    <p class="text-center text-muted">Продолжительность: <span id="timer">{{ workout.duration_minutes }} мин</span></p>
     <hr>
 
-    <!-- Фильтры и список упражнений -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0">Список упражнений</h3>
+    <div class="row g-4">
+        <!-- Левая колонка - блок добавления упражнения -->
+        <div class="col-12 col-md-4">
+            <div class="card shadow-sm p-3 mb-4 add-exercise-block">
+                <h5 class="mb-3">Добавить упражнение</h5>
+                <label for="exerciseSelect" class="form-label">Выберите упражнение:</label>
+                <select class="form-select mb-2" id="exerciseSelect">
+                    <option value="">Выберите упражнение</option>
+                    {% for ex in exercises %}
+                        <option value="{{ ex.id }}">{{ ex.name }}</option>
+                    {% endfor %}
+                </select>
 
-        <!-- Выпадающее меню фильтров -->
-        <div class="dropdown">
-            <button class="btn btn-outline-primary dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                Фильтры <span id="active-filters-count" class="badge bg-primary rounded-pill ms-1">0</span>
-            </button>
-            <div class="dropdown-menu dropdown-menu-end p-3" aria-labelledby="filterDropdown" style="width: 300px;">
-                <form id="filter-form">
-                    <div class="mb-3">
-                        <label class="form-label">Группа мышц:</label>
-                        <select class="form-select" name="muscle_group">
-                            <option value="">Все</option>
-                            <option value="ноги">Ноги</option>
-                            <option value="спина">Спина</option>
-                            <option value="грудные">Грудные</option>
-                            <option value="дельты">Дельты</option>
-                            <option value="трицепс">Трицепс</option>
-                            <option value="бицепс">Бицепс</option>
-                            <option value="кор">Кор</option>
-                        </select>
-                    </div>
+                <label for="executionTypeSelect" class="form-label">Тип выполнения:</label>
+                <select class="form-select execution-select" id="executionTypeSelect">
+                    <option value="классика">Классика</option>
+                    <option value="дроп-сет">Дроп-сет</option>
+                    <option value="суперсет">Суперсет</option>
+                    <option value="трисет">Трисет</option>
+                    <option value="статика">Статика</option>
+                    <option value="пирамида">Пирамида</option>
+                    <option value="полупирамида">Полупирамида</option>
+                </select>
 
-                    <div class="mb-3">
-                        <label class="form-label">Тип оборудования:</label>
-                        <select class="form-select" name="equipment_type">
-                            <option value="">Все</option>
-                            <option value="свободный вес">Свободный вес</option>
-                            <option value="свой вес">Свой вес</option>
-                            <option value="рычажный">Рычажный тренажер</option>
-                            <option value="блочный">Блочный тренажер</option>
-                        </select>
-                    </div>
+                <div class="exercise-select-error mb-2">Выберите один из пунктов списка.</div>
+                <button type="button" class="btn btn-primary w-100 mb-3" id="addExerciseBtn">Добавить</button>
 
-                    <div class="mb-3">
-                        <label class="form-label">Тип упражнения:</label>
-                        <select class="form-select" name="exercise_type">
-                            <option value="">Все</option>
-                            <option value="basic">Базовые</option>
-                            <option value="isolated">Изолированные</option>
-                        </select>
-                    </div>
-
-                    <div class="d-flex justify-content-between">
-                        <button type="submit" class="btn btn-sm btn-primary">Применить</button>
-                        <button type="reset" class="btn btn-sm btn-outline-secondary">Сбросить</button>
-                    </div>
-                </form>
+                <div id="exercise-names">
+                    {% for ex_id, sets in grouped_sets.items()|reverse %}
+                        <div data-exercise-id="{{ ex_id }}">{{ sets[0].name }} — {{ sets|length }} подход(ов)</div>
+                    {% endfor %}
+                </div>
             </div>
+        </div>
+
+        <!-- Правая колонка - блоки упражнений -->
+        <div class="col-12 col-md-8" id="exercisesContainer">
+            {% for ex_id, sets in grouped_sets.items() %}
+                <div class="card exercise-card shadow-sm mb-4 p-3" data-exercise-id="{{ ex_id }}">
+                    <h5 class="mb-3">
+                        {{ sets[0].name }}
+                        <span class="badge bg-secondary execution-badge">{{ sets[0].execution_type or 'классика' }}</span>
+                    </h5>
+                    {% for set in sets %}
+                        <div class="set-block mb-3" data-set-id="{{ set.id }}">
+                            <label class="form-label mb-1">Подход {{ loop.index }}</label>
+                            <span class="set-required">Заполните все поля</span>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <input type="number" step="0.1" class="form-control weight-input"
+                                           value="{{ set.weight_kg or '' }}"
+                                           placeholder="Вес (кг)">
+                                </div>
+                                <div class="col-md-5">
+                                    <input type="number" class="form-control reps-input"
+                                           value="{{ set.reps or '' }}"
+                                           placeholder="Повторы">
+                                </div>
+                                <div class="col-md-1 d-flex align-items-center">
+                                    <button type="button" data-set-id="{{ set.id }}"
+                                            class="btn btn-outline-danger btn-sm small-btn px-2 py-1 delete-set-btn">× Удалить</button>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+
+                    <div class="mt-3 d-grid gap-2 d-md-flex">
+                        <button type="button" class="btn btn-success save-exercise-btn" data-exercise-id="{{ ex_id }}">
+                            Сохранить <span class="saving-indicator">✓</span>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger remove-exercise-btn"
+                                data-exercise-id="{{ ex_id }}">
+                            Удалить упр.
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-add-set {% if sets and (not sets[-1].weight_kg or not sets[-1].reps) %}disabled{% endif %}"
+                                data-exercise-id="{{ ex_id }}">
+                            Добавить подход
+                        </button>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-muted">Нет добавленных упражнений</p>
+            {% endfor %}
         </div>
     </div>
 
-    <!-- Список упражнений -->
-    <div class="row g-3" id="exercises-container">
-        {% for ex in exercises %}
-            <div class="col-12">
-                <div class="card exercise-card shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="card-title mb-0">{{ ex.name }}</h5>
-                            <div>
-                                <button class="btn btn-outline-primary btn-sm edit-btn" data-id="{{ ex.id }}" data-name="{{ ex.name }}"
-                                    data-muscle="{{ ex.muscle_group }}" data-equipment="{{ ex.equipment_type }}"
-                                    data-type="{{ 'basic' if ex.is_basic else 'isolated' }}">
-                                    Изменить
-                                </button>
-                                <form method="post" class="d-inline" onsubmit="return confirm('Вы уверены?')">
-                                    <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="exercise_id" value="{{ ex.id }}">
-                                    <button type="submit" class="btn btn-outline-danger btn-sm ms-2">Удалить</button>
-                                </form>
-                            </div>
-                        </div>
-
-                        <div class="mb-2">
-                            {% if ex.muscle_group %}
-                                <span class="badge badge-muscle rounded-pill me-1">{{ ex.muscle_group }}</span>
-                            {% endif %}
-                            {% if ex.equipment_type %}
-                                <span class="badge badge-equipment rounded-pill me-1">{{ ex.equipment_type }}</span>
-                            {% endif %}
-                            {% if ex.is_basic %}
-                                <span class="badge badge-basic rounded-pill me-1">Базовое</span>
-                            {% else %}
-                                <span class="badge badge-isolated rounded-pill me-1">Изолированное</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        {% endfor %}
+    <div class="d-grid mt-4">
+        <button type="button" id="finishWorkoutBtn" class="btn btn-lg btn-primary">Завершить тренировку</button>
     </div>
 
-    <!-- Сообщение, если нет упражнений -->
-    <div id="no-exercises" class="text-center py-5" style="display: none;">
-        <h4>Упражнения не найдены</h4>
-        <p>Попробуйте изменить параметры фильтрации</p>
-    </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const exercises = Array.from(document.querySelectorAll('#exercises-container .col-12'));
-    const filterForm = document.getElementById('filter-form');
-    const activeFiltersCount = document.getElementById('active-filters-count');
-    const noExercisesMsg = document.getElementById('no-exercises');
+    const workout_id = {{ workout.id }};
+    const workoutStart = new Date("{{ workout.start_time.isoformat() }}");
 
-    // Элементы формы редактирования
-    const exerciseForm = document.getElementById('exercise-form');
-    const formTitle = document.getElementById('form-title');
-    const formAction = document.getElementById('form-action');
-    const exerciseId = document.getElementById('exercise-id');
-    const exerciseName = document.getElementById('exercise-name');
-    const muscleGroup = document.getElementById('muscle-group');
-    const equipmentType = document.getElementById('equipment-type');
-    const exerciseType = document.getElementById('exercise-type');
-    const submitBtn = document.getElementById('submit-btn');
-    const cancelEditBtn = document.getElementById('cancel-edit');
-
-    let activeFilters = {
-        muscle_group: null,
-        equipment_type: null,
-        exercise_type: null
-    };
-
-    // Обработчики кнопок редактирования
-    document.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.dataset.id;
-            const name = this.dataset.name;
-            const muscle = this.dataset.muscle;
-            const equipment = this.dataset.equipment;
-            const type = this.dataset.type;
-
-            // Заполняем форму
-            formTitle.textContent = 'Редактировать упражнение';
-            formAction.value = 'edit';
-            exerciseId.value = id;
-            exerciseName.value = name;
-            muscleGroup.value = muscle || '';
-            equipmentType.value = equipment || '';
-            exerciseType.value = type || '';
-            submitBtn.textContent = 'Сохранить';
-            cancelEditBtn.style.display = 'block';
-
-            // Прокручиваем к форме
-            exerciseForm.scrollIntoView({ behavior: 'smooth' });
-        });
-    });
-
-    // Отмена редактирования
-    cancelEditBtn.addEventListener('click', function() {
-        resetForm();
-    });
-
-    function resetForm() {
-        formTitle.textContent = 'Добавить упражнение';
-        formAction.value = 'add';
-        exerciseId.value = '';
-        exerciseName.value = '';
-        muscleGroup.value = '';
-        equipmentType.value = '';
-        exerciseType.value = '';
-        submitBtn.textContent = 'Добавить';
-        cancelEditBtn.style.display = 'none';
+    // Таймер тренировки
+    function updateTimer() {
+        const now = new Date();
+        const diffMs = now - workoutStart;
+        const minutes = Math.floor(diffMs / 60000);
+        document.getElementById("timer").textContent = `${minutes} мин`;
     }
+    updateTimer();
+    setInterval(updateTimer, 60000);
 
-    // Форма фильтров
-    filterForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const formData = new FormData(this);
+    document.addEventListener('DOMContentLoaded', function() {
+        const exerciseSelect = document.getElementById('exerciseSelect');
+        const executionTypeSelect = document.getElementById('executionTypeSelect');
+        const addExerciseBtn = document.getElementById('addExerciseBtn');
+        const exerciseSelectError = document.querySelector('.exercise-select-error');
+        const exercisesContainer = document.getElementById('exercisesContainer');
+        const finishWorkoutBtn = document.getElementById('finishWorkoutBtn');
 
-        activeFilters = {
-            muscle_group: formData.get('muscle_group'),
-            equipment_type: formData.get('equipment_type'),
-            exercise_type: formData.get('exercise_type')
-        };
+        // Добавление упражнения
+        addExerciseBtn.addEventListener('click', async function() {
+            if (!exerciseSelect.value) {
+                exerciseSelectError.style.display = 'block';
+                exerciseSelect.classList.add('is-invalid');
+                return;
+            }
 
-        updateActiveFilters();
-        applyFilters();
-    });
+            exerciseSelectError.style.display = 'none';
+            exerciseSelect.classList.remove('is-invalid');
 
-    // Сброс формы фильтров
-    filterForm.addEventListener('reset', function() {
-        activeFilters = {
-            muscle_group: null,
-            equipment_type: null,
-            exercise_type: null
-        };
+            try {
+                const response = await fetch(`/activetraining/${workout_id}/add_exercise`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        exercise_id: exerciseSelect.value,
+                        execution_type: executionTypeSelect.value
+                    })
+                });
 
-        updateActiveFilters();
-        applyFilters();
-    });
+                const data = await response.json();
 
-    // Обновление счетчика активных фильтров
-    function updateActiveFilters() {
-        const count = Object.values(activeFilters).filter(val => val !== null).length;
-        activeFiltersCount.textContent = count;
-    }
+                if (data.success) {
+                    // Добавляем новое упражнение в DOM
+                    const newExerciseHtml = `
+                        <div class="card exercise-card shadow-sm mb-4 p-3" data-exercise-id="${data.exercise_id}">
+                            <h5 class="mb-3">${data.exercise_name}
+                                <span class="badge bg-secondary execution-badge">${data.execution_type || 'классика'}</span>
+                            </h5>
+                            <div class="set-block mb-3" data-set-id="${data.set_id}">
+                                <label class="form-label mb-1">Подход 1</label>
+                                <span class="set-required">Заполните все поля</span>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <input type="number" step="0.1" class="form-control weight-input"
+                                               placeholder="Вес (кг)">
+                                    </div>
+                                    <div class="col-md-5">
+                                        <input type="number" class="form-control reps-input"
+                                               placeholder="Повторы">
+                                    </div>
+                                    <div class="col-md-1 d-flex align-items-center">
+                                        <button type="button" data-set-id="${data.set_id}"
+                                                class="btn btn-outline-danger btn-sm small-btn px-2 py-1 delete-set-btn">× Удалить</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 d-grid gap-2 d-md-flex">
+                                <button type="button" class="btn btn-success save-exercise-btn" data-exercise-id="${data.exercise_id}">
+                                    Сохранить <span class="saving-indicator">✓</span>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger remove-exercise-btn"
+                                        data-exercise-id="${data.exercise_id}">
+                                    Удалить упр.
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-add-set disabled"
+                                        data-exercise-id="${data.exercise_id}">
+                                    Добавить подход
+                                </button>
+                            </div>
+                        </div>
+                    `;
 
-    // Применение фильтров
-    function applyFilters() {
-        let visibleCount = 0;
+                    // Добавляем новое упражнение в начало списка
+                    if (exercisesContainer.querySelector('.text-muted')) {
+                        exercisesContainer.innerHTML = newExerciseHtml;
+                    } else {
+                        exercisesContainer.insertAdjacentHTML('afterbegin', newExerciseHtml);
+                    }
 
-        exercises.forEach(exercise => {
-            const muscleGroup = exercise.querySelector('.badge-muscle')?.textContent;
-            const equipmentType = exercise.querySelector('.badge-equipment')?.textContent;
-            const isBasic = exercise.querySelector('.badge-basic') !== null;
-            const isIsolated = exercise.querySelector('.badge-isolated') !== null;
+                    // Обновляем список упражнений слева
+                    const exerciseNamesDiv = document.getElementById('exercise-names');
+                    exerciseNamesDiv.insertAdjacentHTML('afterbegin', `<div data-exercise-id="${data.exercise_id}">${data.exercise_name} — 1 подход(ов)</div>`);
 
-            const matchesFilters = (
-                (!activeFilters.muscle_group || muscleGroup === activeFilters.muscle_group) &&
-                (!activeFilters.equipment_type || equipmentType === activeFilters.equipment_type) &&
-                (
-                    !activeFilters.exercise_type ||
-                    (activeFilters.exercise_type === 'basic' && isBasic) ||
-                    (activeFilters.exercise_type === 'isolated' && isIsolated)
-                )
-            );
-
-            if (matchesFilters) {
-                exercise.style.display = '';
-                visibleCount++;
-            } else {
-                exercise.style.display = 'none';
+                    // Сбрасываем выбор
+                    exerciseSelect.value = '';
+                }
+            } catch (error) {
+                console.error('Ошибка при добавлении упражнения:', error);
+                alert('Произошла ошибка при добавлении упражнения');
             }
         });
 
-        noExercisesMsg.style.display = visibleCount === 0 ? '' : 'none';
-    }
+        // Добавление подхода
+        exercisesContainer.addEventListener('click', async function(e) {
+            if (e.target.classList.contains('btn-add-set') && !e.target.disabled) {
+                const exerciseId = e.target.dataset.exerciseId;
+                const exerciseCard = e.target.closest('.exercise-card');
+                const executionType = exerciseCard.querySelector('.execution-badge').textContent.trim();
 
-    // Инициализация
-    updateActiveFilters();
-});
+                try {
+                    const response = await fetch(`/activetraining/${workout_id}/add_set`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            exercise_id: exerciseId,
+                            execution_type: executionType
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Добавляем новый подход
+                        const setNumber = exerciseCard.querySelectorAll('.set-block').length + 1;
+                        const newSetHtml = `
+                            <div class="set-block mb-3" data-set-id="${data.set_id}">
+                                <label class="form-label mb-1">Подход ${setNumber}</label>
+                                <span class="set-required">Заполните все поля</span>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <input type="number" step="0.1" class="form-control weight-input"
+                                               placeholder="Вес (кг)">
+                                    </div>
+                                    <div class="col-md-5">
+                                        <input type="number" class="form-control reps-input"
+                                               placeholder="Повторы">
+                                    </div>
+                                    <div class="col-md-1 d-flex align-items-center">
+                                        <button type="button" data-set-id="${data.set_id}"
+                                                class="btn btn-outline-danger btn-sm small-btn px-2 py-1 delete-set-btn">× Удалить</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                        // Вставляем перед кнопками управления
+                        const controlsDiv = exerciseCard.querySelector('.d-md-flex');
+                        controlsDiv.insertAdjacentHTML('beforebegin', newSetHtml);
+
+                        // Обновляем счетчик подходов
+                        updateExerciseSetCount(exerciseId);
+
+                        // Делаем кнопку "Добавить подход" неактивной
+                        e.target.classList.add('disabled');
+                        e.target.disabled = true;
+                    }
+                } catch (error) {
+                    console.error('Ошибка при добавлении подхода:', error);
+                    alert('Произошла ошибка при добавлении подхода');
+                }
+            }
+        });
+
+        // Удаление подхода
+        exercisesContainer.addEventListener('click', async function(e) {
+            if (e.target.classList.contains('delete-set-btn')) {
+                const setBlock = e.target.closest('.set-block');
+                const setId = e.target.dataset.setId;
+                const exerciseId = setBlock.closest('.exercise-card').dataset.exerciseId;
+
+                if (confirm('Удалить этот подход?')) {
+                    try {
+                        const response = await fetch(`/activetraining/${workout_id}/delete_set`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                set_id: setId
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            setBlock.remove();
+                            updateExerciseSetCount(exerciseId);
+                        }
+                    } catch (error) {
+                        console.error('Ошибка при удалении подхода:', error);
+                        alert('Произошла ошибка при удалении подхода');
+                    }
+                }
+            }
+        });
+
+        // Удаление упражнения
+        exercisesContainer.addEventListener('click', async function(e) {
+            if (e.target.classList.contains('remove-exercise-btn')) {
+                const exerciseCard = e.target.closest('.exercise-card');
+                const exerciseId = e.target.dataset.exerciseId;
+
+                if (confirm('Удалить это упражнение со всеми подходами?')) {
+                    try {
+                        const response = await fetch(`/activetraining/${workout_id}/remove_exercise`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                exercise_id: exerciseId
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            exerciseCard.remove();
+                            // Удаляем из списка слева
+                            document.querySelector(`#exercise-names div[data-exercise-id="${exerciseId}"]`).remove();
+
+                            // Если не осталось упражнений, показываем сообщение
+                            if (!exercisesContainer.querySelector('.exercise-card')) {
+                                exercisesContainer.innerHTML = '<p class="text-muted">Нет добавленных упражнений</p>';
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Ошибка при удалении упражнения:', error);
+                        alert('Произошла ошибка при удалении упражнения');
+                    }
+                }
+            }
+        });
+
+        // Сохранение данных подходов
+        exercisesContainer.addEventListener('click', async function(e) {
+            if (e.target.classList.contains('save-exercise-btn')) {
+                const exerciseCard = e.target.closest('.exercise-card');
+                const exerciseId = e.target.dataset.exerciseId;
+                const saveBtn = e.target;
+                const indicator = saveBtn.querySelector('.saving-indicator');
+
+                // Получаем все подходы для этого упражнения
+                const setBlocks = exerciseCard.querySelectorAll('.set-block');
+                const setsData = [];
+
+                for (const setBlock of setBlocks) {
+                    setsData.push({
+                        set_id: setBlock.dataset.setId,
+                        weight: setBlock.querySelector('.weight-input').value,
+                        reps: setBlock.querySelector('.reps-input').value
+                    });
+                }
+
+                try {
+                    saveBtn.disabled = true;
+                    indicator.style.display = 'inline';
+
+                    const response = await fetch(`/activetraining/${workout_id}/save_exercise`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            exercise_id: exerciseId,
+                            sets: setsData
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Показываем индикатор успешного сохранения
+                        indicator.textContent = '✓';
+                        setTimeout(() => {
+                            indicator.style.display = 'none';
+                            saveBtn.disabled = false;
+                        }, 2000);
+
+                        // Активируем кнопку добавления подхода, если все подходы заполнены
+                        const addSetBtn = exerciseCard.querySelector('.btn-add-set');
+                        const isComplete = checkExerciseSetsComplete(exerciseCard);
+                        addSetBtn.disabled = !isComplete;
+                        addSetBtn.classList.toggle('disabled', !isComplete);
+                    }
+                } catch (error) {
+                    console.error('Ошибка при сохранении упражнения:', error);
+                    indicator.textContent = '✗';
+                    setTimeout(() => {
+                        indicator.style.display = 'none';
+                        saveBtn.disabled = false;
+                    }, 2000);
+                }
+            }
+        });
+
+        // Автосохранение при изменении полей
+        exercisesContainer.addEventListener('input', function(e) {
+            if (e.target.classList.contains('weight-input') || e.target.classList.contains('reps-input')) {
+                const setBlock = e.target.closest('.set-block');
+                const exerciseCard = setBlock.closest('.exercise-card');
+                const exerciseId = exerciseCard.dataset.exerciseId;
+                const saveBtn = exerciseCard.querySelector('.save-exercise-btn');
+                const indicator = saveBtn.querySelector('.saving-indicator');
+
+                const weightInput = setBlock.querySelector('.weight-input');
+                const repsInput = setBlock.querySelector('.reps-input');
+
+                // Валидация
+                if (!weightInput.value || !repsInput.value) {
+                    setBlock.querySelector('.set-required').style.display = 'block';
+                    weightInput.classList.add('invalid-set');
+                    repsInput.classList.add('invalid-set');
+                } else {
+                    setBlock.querySelector('.set-required').style.display = 'none';
+                    weightInput.classList.remove('invalid-set');
+                    repsInput.classList.remove('invalid-set');
+                }
+
+                // Активируем кнопку сохранения
+                saveBtn.querySelector('.saving-indicator').textContent = '*';
+                saveBtn.querySelector('.saving-indicator').style.display = 'inline';
+
+                // Активируем/деактивируем кнопку добавления подхода
+                const addSetBtn = exerciseCard.querySelector('.btn-add-set');
+                const isComplete = checkExerciseSetsComplete(exerciseCard);
+                addSetBtn.disabled = !isComplete;
+                addSetBtn.classList.toggle('disabled', !isComplete);
+            }
+        });
+
+        // Завершение тренировки
+        finishWorkoutBtn.addEventListener('click', async function() {
+            if (confirm('Завершить текущую тренировку?')) {
+                try {
+                    const now = new Date();
+                    const duration = Math.max(0, (now - workoutStart) / 60000);
+
+                    const response = await fetch(`/activetraining/${workout_id}/finish`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            duration: Math.round(duration)
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        window.location.href = '/menu';
+                    }
+                } catch (error) {
+                    console.error('Ошибка при завершении тренировки:', error);
+                    alert('Произошла ошибка при завершении тренировки');
+                }
+            }
+        });
+
+        // Функция проверки заполненности всех подходов упражнения
+        function checkExerciseSetsComplete(exerciseCard) {
+            const weightInputs = exerciseCard.querySelectorAll('.weight-input');
+            const repsInputs = exerciseCard.querySelectorAll('.reps-input');
+
+            for (let i = 0; i < weightInputs.length; i++) {
+                if (!weightInputs[i].value || !repsInputs[i].value) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Функция обновления счетчика подходов
+        function updateExerciseSetCount(exerciseId) {
+            const exerciseCard = document.querySelector(`.exercise-card[data-exercise-id="${exerciseId}"]`);
+            if (!exerciseCard) return;
+
+            const setCount = exerciseCard.querySelectorAll('.set-block').length;
+            const exerciseName = exerciseCard.querySelector('h5').textContent;
+
+            // Обновляем счетчик в левой колонке
+            const exerciseNameDiv = document.querySelector(`#exercise-names div[data-exercise-id="${exerciseId}"]`);
+            if (exerciseNameDiv) {
+                exerciseNameDiv.textContent = `${exerciseName} — ${setCount} подход(ов)`;
+            }
+        }
+    });
 </script>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

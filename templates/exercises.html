@@ -10,17 +10,25 @@
         .exercise-card { transition: transform 0.2s; }
         .exercise-card:hover { transform: translateY(-2px); }
         .badge-muscle { background-color: #6c757d; }
+        .badge-type { background-color: #198754; }
         .badge-equipment { background-color: #17a2b8; }
-        .filter-active { background-color: #0d6efd; color: white; }
+        .edit-form { display: none; margin-top: 15px; }
+        .add-form { margin-bottom: 20px; }
+        .filter-panel { margin-bottom: 20px; }
+        .header-container { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
+        .header-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
     </style>
 </head>
 <body>
 
 <div class="container py-4">
-    <!-- Заголовок и кнопка назад -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="text-center mb-0">Упражнения</h2>
-        <a href="/menu" class="btn btn-outline-secondary">Назад</a>
+    <!-- Заголовок и кнопки действий -->
+    <div class="header-container mb-4">
+        <h2 class="mb-0">Упражнения</h2>
+        <div class="header-actions">
+            <button class="btn btn-primary" id="toggle-add-form">Добавить упражнение</button>
+            <a href="/menu" class="btn btn-outline-secondary">Назад в меню</a>
+        </div>
     </div>
 
     <!-- Сообщения об ошибках -->
@@ -37,14 +45,16 @@
     {% endwith %}
 
     <!-- Форма добавления упражнения -->
-    <div class="card mb-4 shadow-sm p-3 exercise-card">
+    <div class="card mb-4 shadow-sm p-3 add-form" id="add-exercise-form" style="display: none;">
         <h3 class="mb-3">Добавить упражнение</h3>
         <form method="post">
             <input type="hidden" name="action" value="add">
+
             <div class="mb-3">
                 <label class="form-label">Название:</label>
                 <input type="text" class="form-control" name="name" required>
             </div>
+
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Группа мышц:</label>
@@ -59,6 +69,16 @@
                         <option value="кор">Кор</option>
                     </select>
                 </div>
+
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Тип упражнения:</label>
+                    <select class="form-select" name="exercise_type">
+                        <option value="">-- Выберите --</option>
+                        <option value="basic">Базовое</option>
+                        <option value="isolated">Изолированное</option>
+                    </select>
+                </div>
+
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Тип оборудования:</label>
                     <select class="form-select" name="equipment_type">
@@ -69,52 +89,19 @@
                         <option value="блочный">Блочный тренажер</option>
                     </select>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="is_basic" id="is_basic">
-                        <label class="form-check-label" for="is_basic">Базовое упражнение</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="is_compound" id="is_compound">
-                        <label class="form-check-label" for="is_compound">Многосуставное</label>
-                    </div>
-                </div>
             </div>
-            <button type="submit" class="btn btn-primary w-100">Добавить</button>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1">Добавить</button>
+                <button type="button" class="btn btn-outline-secondary" id="cancel-add">Отмена</button>
+            </div>
         </form>
     </div>
 
-    <hr>
-
-    <!-- Фильтры и список упражнений -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0">Список упражнений</h3>
-        <div class="btn-group">
-            <button type="button" class="btn btn-sm btn-outline-primary" id="filter-btn">
-                Фильтры <span id="active-filters-count" class="badge bg-primary rounded-pill ms-1">0</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- Быстрые фильтры -->
-    <div class="d-flex flex-wrap gap-2 mb-3" id="quick-filters">
-        <button class="btn btn-sm btn-outline-secondary filter-quick" data-filter="is_basic">Базовые</button>
-        <button class="btn btn-sm btn-outline-secondary filter-quick" data-filter="is_compound">Многосуставные</button>
-        {% for group in ['ноги', 'спина', 'грудные', 'дельты', 'трицепс', 'бицепс', 'кор'] %}
-            <button class="btn btn-sm btn-outline-secondary filter-quick" data-filter="muscle_group" data-value="{{ group }}">
-                {{ group }}
-            </button>
-        {% endfor %}
-        {% for equip in ['свободный вес', 'свой вес', 'рычажный', 'блочный'] %}
-            <button class="btn btn-sm btn-outline-secondary filter-quick" data-filter="equipment_type" data-value="{{ equip }}">
-                {{ equip }}
-            </button>
-        {% endfor %}
-    </div>
-
-    <!-- Панель расширенных фильтров -->
-    <div class="card mb-3 shadow-sm" id="filter-panel" style="display: none;">
+    <!-- Фильтры (всегда развернуты) -->
+    <div class="card mb-4 shadow-sm filter-panel">
         <div class="card-body">
+            <h3 class="mb-3">Фильтры</h3>
             <form id="filter-form">
                 <div class="row">
                     <div class="col-md-4 mb-3">
@@ -130,6 +117,16 @@
                             <option value="кор">Кор</option>
                         </select>
                     </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Тип упражнения:</label>
+                        <select class="form-select" name="exercise_type">
+                            <option value="">Все</option>
+                            <option value="basic">Базовые</option>
+                            <option value="isolated">Изолированные</option>
+                        </select>
+                    </div>
+
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Тип оборудования:</label>
                         <select class="form-select" name="equipment_type">
@@ -140,20 +137,12 @@
                             <option value="блочный">Блочный тренажер</option>
                         </select>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="is_basic" id="filter_basic">
-                            <label class="form-check-label" for="filter_basic">Только базовые</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="is_compound" id="filter_compound">
-                            <label class="form-check-label" for="filter_compound">Только многосуставные</label>
-                        </div>
-                    </div>
                 </div>
-                <button type="submit" class="btn btn-sm btn-primary">Применить</button>
-                <button type="reset" class="btn btn-sm btn-outline-secondary">Сбросить</button>
-                <button type="button" id="reset-all" class="btn btn-sm btn-outline-danger">Сбросить все</button>
+
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-sm btn-primary">Применить</button>
+                    <button type="reset" class="btn btn-sm btn-outline-secondary">Сбросить</button>
+                </div>
             </form>
         </div>
     </div>
@@ -161,32 +150,91 @@
     <!-- Список упражнений -->
     <div class="row g-3" id="exercises-container">
         {% for ex in exercises %}
-            <div class="col-12">
+            <div class="col-12 exercise-item">
                 <div class="card exercise-card shadow-sm">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h5 class="card-title mb-0">{{ ex.name }}</h5>
-                            <form method="post" onsubmit="return confirm('Вы уверены?')">
-                                <input type="hidden" name="action" value="delete">
-                                <input type="hidden" name="exercise_id" value="{{ ex.id }}">
-                                <button type="submit" class="btn btn-outline-danger btn-sm ms-2">Удалить</button>
-                            </form>
+                            <div>
+                                <button class="btn btn-outline-primary btn-sm edit-btn" data-id="{{ ex.id }}">Изменить</button>
+                                <form method="post" class="d-inline" onsubmit="return confirm('Вы уверены?')">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="exercise_id" value="{{ ex.id }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm ms-2">Удалить</button>
+                                </form>
+                            </div>
                         </div>
 
                         <div class="mb-2">
                             {% if ex.muscle_group %}
                                 <span class="badge badge-muscle rounded-pill me-1">{{ ex.muscle_group }}</span>
                             {% endif %}
+                            {% if ex.is_basic %}
+                                <span class="badge badge-type rounded-pill me-1">Базовое</span>
+                            {% else %}
+                                <span class="badge badge-type rounded-pill me-1">Изолированное</span>
+                            {% endif %}
                             {% if ex.equipment_type %}
                                 <span class="badge badge-equipment rounded-pill me-1">{{ ex.equipment_type }}</span>
                             {% endif %}
-                            {% if ex.is_basic %}
-                                <span class="badge bg-success rounded-pill me-1">Базовое</span>
-                            {% endif %}
-                            {% if ex.is_compound %}
-                                <span class="badge bg-info rounded-pill">Многосуставное</span>
-                            {% endif %}
                         </div>
+                    </div>
+                </div>
+
+                <!-- Форма редактирования (скрыта по умолчанию) -->
+                <div class="card mt-2 edit-form" id="edit-form-{{ ex.id }}">
+                    <div class="card-body">
+                        <h5>Редактировать упражнение</h5>
+                        <form method="post">
+                            <input type="hidden" name="action" value="edit">
+                            <input type="hidden" name="exercise_id" value="{{ ex.id }}">
+
+                            <div class="mb-3">
+                                <label class="form-label">Название:</label>
+                                <input type="text" class="form-control" name="name" value="{{ ex.name }}" required>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Группа мышц:</label>
+                                    <select class="form-select" name="muscle_group">
+                                        <option value="">-- Выберите --</option>
+                                        <option value="ноги" {% if ex.muscle_group == 'ноги' %}selected{% endif %}>Ноги</option>
+                                        <option value="спина" {% if ex.muscle_group == 'спина' %}selected{% endif %}>Спина</option>
+                                        <option value="грудные" {% if ex.muscle_group == 'грудные' %}selected{% endif %}>Грудные</option>
+                                        <option value="дельты" {% if ex.muscle_group == 'дельты' %}selected{% endif %}>Дельты</option>
+                                        <option value="трицепс" {% if ex.muscle_group == 'трицепс' %}selected{% endif %}>Трицепс</option>
+                                        <option value="бицепс" {% if ex.muscle_group == 'бицепс' %}selected{% endif %}>Бицепс</option>
+                                        <option value="кор" {% if ex.muscle_group == 'кор' %}selected{% endif %}>Кор</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Тип упражнения:</label>
+                                    <select class="form-select" name="exercise_type">
+                                        <option value="">-- Выберите --</option>
+                                        <option value="basic" {% if ex.is_basic %}selected{% endif %}>Базовое</option>
+                                        <option value="isolated" {% if ex.is_basic == False %}selected{% endif %}>Изолированное</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Тип оборудования:</label>
+                                    <select class="form-select" name="equipment_type">
+                                        <option value="">-- Выберите --</option>
+                                        <option value="свободный вес" {% if ex.equipment_type == 'свободный вес' %}selected{% endif %}>Свободный вес</option>
+                                        <option value="свой вес" {% if ex.equipment_type == 'свой вес' %}selected{% endif %}>Свой вес</option>
+                                        <option value="рычажный" {% if ex.equipment_type == 'рычажный' %}selected{% endif %}>Рычажный тренажер</option>
+                                        <option value="блочный" {% if ex.equipment_type == 'блочный' %}selected{% endif %}>Блочный тренажер</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary flex-grow-1">Сохранить</button>
+                                <button type="button" class="btn btn-outline-secondary cancel-edit-btn" data-id="{{ ex.id }}">Отмена</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -203,47 +251,69 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const exercises = Array.from(document.querySelectorAll('#exercises-container .col-12'));
-    const filterPanel = document.getElementById('filter-panel');
+    const exercises = Array.from(document.querySelectorAll('#exercises-container .exercise-item'));
     const filterForm = document.getElementById('filter-form');
-    const filterBtn = document.getElementById('filter-btn');
-    const resetAllBtn = document.getElementById('reset-all');
-    const quickFilters = document.querySelectorAll('.filter-quick');
-    const activeFiltersCount = document.getElementById('active-filters-count');
     const noExercisesMsg = document.getElementById('no-exercises');
+
+    // Элементы формы добавления
+    const toggleAddFormBtn = document.getElementById('toggle-add-form');
+    const addExerciseForm = document.getElementById('add-exercise-form');
+    const cancelAddBtn = document.getElementById('cancel-add');
 
     let activeFilters = {
         muscle_group: null,
-        equipment_type: null,
-        is_basic: false,
-        is_compound: false
+        exercise_type: null,
+        equipment_type: null
     };
 
-    // Переключение панели фильтров
-    filterBtn.addEventListener('click', function() {
-        filterPanel.style.display = filterPanel.style.display === 'none' ? 'block' : 'none';
+    // Обработчики кнопок редактирования
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const exerciseId = this.dataset.id;
+            const editForm = document.getElementById(`edit-form-${exerciseId}`);
+
+            // Скрываем все формы редактирования
+            document.querySelectorAll('.edit-form').forEach(form => {
+                form.style.display = 'none';
+            });
+
+            // Показываем нужную форму
+            editForm.style.display = 'block';
+
+            // Скрываем форму добавления, если она открыта
+            addExerciseForm.style.display = 'none';
+
+            // Прокручиваем к форме
+            editForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
     });
 
-    // Быстрые фильтры
-    quickFilters.forEach(btn => {
+    // Отмена редактирования
+    document.querySelectorAll('.cancel-edit-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            const filterType = this.dataset.filter;
-            const filterValue = this.dataset.value || true;
-
-            if (filterType === 'is_basic' || filterType === 'is_compound') {
-                activeFilters[filterType] = !activeFilters[filterType];
-            } else {
-                if (activeFilters[filterType] === filterValue) {
-                    activeFilters[filterType] = null;
-                } else {
-                    activeFilters[filterType] = filterValue;
-                }
-            }
-
-            updateActiveFilters();
-            applyFilters();
-            updateQuickFilterButtons();
+            const exerciseId = this.dataset.id;
+            document.getElementById(`edit-form-${exerciseId}`).style.display = 'none';
         });
+    });
+
+    // Переключение формы добавления
+    toggleAddFormBtn.addEventListener('click', function() {
+        addExerciseForm.style.display = addExerciseForm.style.display === 'none' ? 'block' : 'none';
+
+        // Скрываем все формы редактирования
+        document.querySelectorAll('.edit-form').forEach(form => {
+            form.style.display = 'none';
+        });
+
+        // Прокручиваем к форме
+        if (addExerciseForm.style.display === 'block') {
+            addExerciseForm.scrollIntoView({ behavior: 'smooth' });
+        }
+    });
+
+    // Отмена добавления
+    cancelAddBtn.addEventListener('click', function() {
+        addExerciseForm.style.display = 'none';
     });
 
     // Форма фильтров
@@ -253,69 +323,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
         activeFilters = {
             muscle_group: formData.get('muscle_group'),
-            equipment_type: formData.get('equipment_type'),
-            is_basic: formData.get('is_basic') === 'on',
-            is_compound: formData.get('is_compound') === 'on'
+            exercise_type: formData.get('exercise_type'),
+            equipment_type: formData.get('equipment_type')
         };
 
-        updateActiveFilters();
         applyFilters();
-        updateQuickFilterButtons();
-        filterPanel.style.display = 'none';
     });
 
     // Сброс формы фильтров
     filterForm.addEventListener('reset', function() {
         activeFilters = {
             muscle_group: null,
-            equipment_type: null,
-            is_basic: false,
-            is_compound: false
+            exercise_type: null,
+            equipment_type: null
         };
 
-        updateActiveFilters();
         applyFilters();
-        updateQuickFilterButtons();
     });
-
-    // Сброс всех фильтров
-    resetAllBtn.addEventListener('click', function() {
-        activeFilters = {
-            muscle_group: null,
-            equipment_type: null,
-            is_basic: false,
-            is_compound: false
-        };
-
-        filterForm.reset();
-        updateActiveFilters();
-        applyFilters();
-        updateQuickFilterButtons();
-    });
-
-    // Обновление счетчика активных фильтров
-    function updateActiveFilters() {
-        const count = Object.values(activeFilters).filter(val =>
-            val !== null && val !== false
-        ).length;
-
-        activeFiltersCount.textContent = count;
-        filterBtn.classList.toggle('filter-active', count > 0);
-    }
-
-    // Обновление состояния кнопок быстрых фильтров
-    function updateQuickFilterButtons() {
-        quickFilters.forEach(btn => {
-            const filterType = btn.dataset.filter;
-            const filterValue = btn.dataset.value || true;
-
-            if (filterType === 'is_basic' || filterType === 'is_compound') {
-                btn.classList.toggle('filter-active', activeFilters[filterType]);
-            } else {
-                btn.classList.toggle('filter-active', activeFilters[filterType] === filterValue);
-            }
-        });
-    }
 
     // Применение фильтров
     function applyFilters() {
@@ -323,15 +347,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
         exercises.forEach(exercise => {
             const muscleGroup = exercise.querySelector('.badge-muscle')?.textContent;
+            const isBasic = exercise.querySelector('.badge-type')?.textContent === 'Базовое';
+            const isIsolated = exercise.querySelector('.badge-type')?.textContent === 'Изолированное';
             const equipmentType = exercise.querySelector('.badge-equipment')?.textContent;
-            const isBasic = exercise.querySelector('.badge.bg-success') !== null;
-            const isCompound = exercise.querySelector('.badge.bg-info') !== null;
 
             const matchesFilters = (
                 (!activeFilters.muscle_group || muscleGroup === activeFilters.muscle_group) &&
-                (!activeFilters.equipment_type || equipmentType === activeFilters.equipment_type) &&
-                (!activeFilters.is_basic || isBasic) &&
-                (!activeFilters.is_compound || isCompound)
+                (
+                    !activeFilters.exercise_type ||
+                    (activeFilters.exercise_type === 'basic' && isBasic) ||
+                    (activeFilters.exercise_type === 'isolated' && isIsolated)
+                ) &&
+                (!activeFilters.equipment_type || equipmentType === activeFilters.equipment_type)
             );
 
             if (matchesFilters) {
@@ -346,8 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Инициализация
-    updateActiveFilters();
-    updateQuickFilterButtons();
+    applyFilters();
 });
 </script>
 </body>
