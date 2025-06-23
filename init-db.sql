@@ -98,3 +98,24 @@ INSERT INTO exercises (name, muscle_group, is_basic, is_compound, equipment_type
 ('Разгибание ног в тренажере', 'ноги', FALSE, FALSE, 'рычажный'),
 ('Разведение ног в тренажере', 'ноги', FALSE, FALSE, 'рычажный'),
 ('Пек-дек', 'грудные', FALSE, FALSE, 'рычажный');
+
+-- Таблица планов тренировок
+CREATE TABLE IF NOT EXISTS workout_plans (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    title TEXT NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Таблица запланированных тренировок
+CREATE TABLE IF NOT EXISTS planned_workouts (
+    id SERIAL PRIMARY KEY,
+    plan_id INTEGER REFERENCES workout_plans(id),
+    title TEXT NOT NULL,
+    description TEXT,
+    day_of_week INTEGER CHECK (day_of_week BETWEEN 1 AND 7),
+    is_completed BOOLEAN DEFAULT FALSE
+);
